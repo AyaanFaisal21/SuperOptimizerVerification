@@ -24,6 +24,7 @@ correctness concern rather than a precision footnote.
 | [`CLAIM.md`](CLAIM.md) | The claim (C1), the alternative (A1), and the thresholds — fixed in advance |
 | [`BACKGROUND.md`](BACKGROUND.md) | Why the gap exists, per system, with citations |
 | [`ROADMAP.md`](ROADMAP.md) | Phases, exit criteria, and kill criteria |
+| [`PROGRESS.md`](PROGRESS.md) | Where the work stands against those phases, and where the outline turned out wrong |
 | [`NOTEBOOK.md`](NOTEBOOK.md) | Dated entries — prediction before each run, outcome after |
 | [`papers/README.md`](papers/README.md) | The six-paper working set and what to read in each |
 
@@ -55,17 +56,23 @@ torch's internals invisibly.
 
 ## Status
 
-Phases 0–1 complete. Claim registered; corpus built and both exit criteria met —
-all 18 cells (6 pairs × 3 shape classes) agree to 1e-15 in float64, and the
-negative control confirms the accumulation orders genuinely diverge in fp32.
+**Phases 0–1 of 6 complete.** Claim registered before any code; corpus built and
+both exit criteria met — all 18 cells (6 pairs × 3 shape classes) agree to 1e-15 in
+float64, and a negative control confirms the accumulation orders genuinely diverge
+in fp32, so a null result later would mean something.
 
 ```bash
 python -m pytest tests/ -q
 ```
 
-Phase 2 (reference and precision harness) next. One open decision is recorded at
-the end of [`NOTEBOOK.md`](NOTEBOOK.md): the fp16 native-vs-simulated validation
-gate needs CUDA, which this machine does not have.
+**No measurement has been made yet.** Nothing in this repo currently bears on
+whether C1 or A1 is true.
+
+Phase 2 is blocked on one decision — which hardware — because it determines whether
+bf16 is measured or simulated. Phase 3 is blocked on a prerequisite the outline did
+not anticipate: there is no trained TransformerOp checkpoint to draw activations
+from. Full accounting, including three places the roadmap's own premises turned out
+to be wrong, is in [`PROGRESS.md`](PROGRESS.md).
 
 ## License
 
