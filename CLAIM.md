@@ -105,4 +105,37 @@ measures, and which each paper's own limitations section implicitly invites.
 
 ## Amendments
 
-*(none yet — dated entries only, appended)*
+### 2026-08-03 — Phase 1 float64 bug check is gated on scale-relative error
+
+**What changed.** "Every pair must agree to `1e-12` in float64" (above, under *Scope
+of `g`*) did not say *which* error measure. It is now gated on
+
+```
+max_i |g_i − T_i|  /  max_i |T_i|          (scale-relative)
+```
+
+at the same `1e-12`, not on max per-element relative error.
+
+**Why.** Per-element relative error is not well posed as an agreement check when an
+output passes through cancellation: the denominator can be arbitrarily near zero and
+the ratio is then unbounded *for a bit-correct implementation*. Found on the first
+run — `scalar_past_matmul` at the MLP shape reported `7.5e-11` and tripped the gate.
+The element behind it has magnitude `1.3e-05` in a tensor whose max is `4.88`, with
+an absolute difference of `9.8e-16` — float64 rounding noise at the scale of the
+terms being summed. Under the scale-relative measure every pair reads `1e-15`–`3e-15`,
+a few float64 eps, with three orders of headroom to the gate.
+
+This is the same reasoning as the `atol` term in the registered gate above, applied
+to the reference check. Both measures are printed by `tests/test_corpus.py` so the
+choice stays visible.
+
+**What did not change.** T1–T4 and the `rtol = atol = 1e-4` gate are untouched. Those
+govern fp32/fp16 measurement against float64 truth; this concerns only the Phase 1
+check that my two implementations are the same function over ℝ. No threshold that
+bears on C1 vs A1 has moved.
+
+**Related bug found by the same run.** Inputs were being drawn at float32 and cast
+*up* to float64, leaving 29 spare mantissa bits — which made float64 summation of a
+few thousand such values exact in every order, so the reduction pairs reported a
+perfect `0.000e+00`. Passing for the wrong reason. `corpus._randn` now draws at
+float64 and rounds down; `test_float64_reference_actually_rounds` pins it.
