@@ -106,3 +106,43 @@ no seeding — i.e. the condition under which the field's assumption is *most* l
 to hold. Phases 3–5 are what test it.
 
 ---
+
+## 2026-08-03 — A10 acquired; hardware characterisation (prediction only)
+
+**Setup.** Hardware decision resolved: a Lambda `gpu_1x_a10`, us-east-1. Verified
+NVIDIA A10, **compute capability 8.6** (Ampere), 23 GB, driver 580.105.08, CUDA
+12.8, Python 3.10.12, torch **2.7.0**. Note the version skew against this Mac
+(torch 2.8.0, Python 3.13.1) — recorded because reduced-precision defaults have
+changed between torch releases before, and any cross-machine comparison has to
+account for it.
+
+Ampere settles the bf16 question: native in hardware, so nothing is simulated. The
+roadmap's Phase 2 simulation sub-task, its stated bf16 limitation, the
+corresponding Phase 6 threat-to-validity, and the second kill criterion are all
+moot. `tools/probe_hardware.py` is the replacement — it characterises the machine's
+arithmetic so that record can travel with every result.
+
+**Prediction (written and committed before the probe runs).**
+
+1. **TF32.** `torch.backends.cuda.matmul.allow_tf32` reads **False** — the default
+   flipped in torch 1.12 — and `cudnn.allow_tf32` reads **True**. Empirically, fp32
+   matmul vs float64 lands near **1e-7** with TF32 off and near **1e-3** with it on,
+   a ratio of roughly 10³–10⁴. If the flag instead reads True on this build, every
+   fp32 number this box would have produced is a ~10-bit-mantissa baseline and the
+   whole fp32 arm would have been quietly wrong.
+2. **Storage rounding.** The stagnation probe returns exactly 1.0 for both fp16 and
+   bf16 on device, matching the Mac. Elementwise accumulation is genuinely in-type.
+3. **Matmul accumulate.** fp16 and bf16 matmul error against exact arithmetic on the
+   same rounded inputs is ~1e-3, dominated by rounding the *output* to the narrow
+   type rather than by accumulation. I therefore expect the two settings of
+   `allow_*_reduced_precision_reduction` to differ **little or not at all** at
+   K=4096 — the tensor-core MMA accumulates in fp32 either way and the flag governs
+   only the split-k reduction. If that holds, "accumulation width as a switchable
+   experimental axis" is weaker than I claimed when recommending this box, and I
+   should say so rather than quietly drop it.
+4. **Determinism.** Repeated identical matmuls are bitwise equal within a process.
+5. **float64.** Works; roughly 20–40× slower than fp32 (A10 is nominally 1:32).
+
+**Outcome.** — pending, next entry.
+
+---
