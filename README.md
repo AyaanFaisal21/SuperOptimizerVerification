@@ -27,9 +27,45 @@ correctness concern rather than a precision footnote.
 | [`NOTEBOOK.md`](NOTEBOOK.md) | Dated entries — prediction before each run, outcome after |
 | [`papers/README.md`](papers/README.md) | The six-paper working set and what to read in each |
 
+## The corpus
+
+Six transformation pairs, each *exactly* equal over ℝ, each drawn from what the
+three systems actually accept. Over ℝ the two sides of a pair are the same
+function, so any difference the harness measures is entirely floating-point.
+
+| Pair | Identity | Accepted by | Source |
+|---|---|---|---|
+| `split_reduction` | `sum(x) == Σⱼ sum(chunkⱼ)` | Prism, Mirage, MPK | Prism §4 Table 1 (`part`/`red`/`comb`) |
+| `reassociation` | `(a+b)+c == a+(b+c)` | Prism, Mirage, Axon | Prism §4; Mirage §4.3 (`A_eq`) |
+| `scalar_past_matmul` | `(αA)B == α(AB)` | Axon, Prism | Axon §4.2 worked example |
+| `layernorm_variance` | `E[(x−μ)²] == E[x²] − μ²` | Axon, Prism | `cornfield/autotune_layernorm.py` |
+| `softmax_online` | `softmax(x) == online_softmax(x)` | Prism; Axon partial; **Mirage cannot** | `TransformerOp/kernels/attn_ext.cu:81` |
+| `matmul_k_tiling` | `AB == Σₜ A[:,t]B[t,:]` | Prism, Axon, Mirage | Prism §5 (instantiation) |
+
+`softmax_online` is the one entry not uniformly accepted, which is why it is in
+the corpus: more than one `exp` on an input→output path puts it outside Mirage's
+Lax fragment, so Mirage partitions around it; Axon treats `exp` as uninterpreted
+and conservatively rejects transformations through it; Prism accepts it
+axiomatically. It measures what the systems give up, not only what they accept.
+
+Accumulation order is controlled explicitly in [`fpgap/accumulate.py`](fpgap/accumulate.py)
+rather than delegated to `torch.sum` — torch uses a blocked pairwise cascade on
+CPU and a tree reduction on CUDA, and measuring torch against torch would measure
+torch's internals invisibly.
+
 ## Status
 
-Phase 0 complete — claim registered. Phase 1 (transformation corpus) next.
+Phases 0–1 complete. Claim registered; corpus built and both exit criteria met —
+all 18 cells (6 pairs × 3 shape classes) agree to 1e-15 in float64, and the
+negative control confirms the accumulation orders genuinely diverge in fp32.
+
+```bash
+python -m pytest tests/ -q
+```
+
+Phase 2 (reference and precision harness) next. One open decision is recorded at
+the end of [`NOTEBOOK.md`](NOTEBOOK.md): the fp16 native-vs-simulated validation
+gate needs CUDA, which this machine does not have.
 
 ## License
 
