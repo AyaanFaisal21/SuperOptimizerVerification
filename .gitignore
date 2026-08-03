@@ -1,0 +1,16 @@
+papers/*.pdf
+__pycache__/
+*.py[cod]
+.gen/
+cache.json
+.venv/
+venv/
+
+# Raw per-cell results are committed — they are the artifact. The large
+# intermediate tensors that produce them are not.
+fixtures/*.pt
+fixtures/*.npz
+results/**/*.npy
+*.egg-info/
+.ipynb_checkpoints/
+.DS_Store
