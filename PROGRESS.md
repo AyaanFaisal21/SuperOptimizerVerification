@@ -11,14 +11,42 @@ a finding rather than quietly absorbed.
 |---|---|---|---|
 | 0 — Setup | ½ day | **complete** | yes — claim committed dated, `f9adefc` |
 | 1 — Transformation corpus | 3–5 days | **complete** | yes — 6 pairs, 18/18 cells inside 1e-12 |
-| 2 — Reference & precision harness | 3–4 days | **blocked** | no — awaiting hardware decision |
+| 2 — Reference & precision harness | 3–4 days | **in progress** | no — hardware settled, harness not built |
 | 3 — Realistic inputs | 2–3 days | **blocked** | no — prerequisite missing, see below |
 | 4 — Main sweep | 4–6 days | not started | no |
 | 5 — Seeded-input experiment | 3–4 days | not started | no |
 | 6 — Writeup | 5–7 days | Background only | no |
 
-Two of six phases complete, roughly on the outline's calendar. Everything below
-Phase 2 is gated on one decision and one missing prerequisite, both stated below.
+Two of six phases complete, roughly on the outline's calendar. Phase 3 is gated on a
+prerequisite the outline did not anticipate; Phases 4–6 follow from it.
+
+---
+
+## Open question that may reframe C1
+
+Not a phase item, and it needs a decision before Phase 4 is designed.
+
+Measured on the A10 and reproduced bit-identically on the Mac: **at fp16 and bf16,
+an untransformed matmul already exceeds the `1e-4` gate** — 3.95e-04 and 3.10e-03
+against exact arithmetic on its own inputs, before any transformation is applied.
+The identity fails.
+
+C1's second clause says the gap "widens under the reduced precisions that production
+inference runs in." That is at risk of being **trivially true**: precision alone
+blows the tolerance, no superoptimizer required. The question with content is
+whether a transformation adds error *beyond what the baseline already suffers at
+that precision* — `err(variant vs truth)` against `err(baseline vs truth)`, not just
+against the absolute gate.
+
+**No threshold moves.** T1 and the registered gate stand exactly as written. What
+changes is the analysis plan: the differential must be co-reported alongside the
+absolute gate, or the bf16 column is a row of failures that says nothing about
+transformations.
+
+The observation is also a result in its own right. Axon validates at
+`rtol = atol = 1e-4` in FP32, and that gate is simply **inapplicable** at the
+precision production runs at — independent of any superoptimizer. None of the three
+papers states what replaces it at bf16.
 
 ---
 
@@ -77,14 +105,37 @@ pushed the sweep toward A1 — the direction least likely to be interrogated.
 
 ---
 
-## Phase 2 — Reference and precision harness ⏸ blocked
+## Phase 2 — Reference and precision harness ◐ in progress
 
 **Exit criterion:** *the harness takes (transformation, shape, precision, input
-tensor) and returns per-element relative error against float64 truth.* Not started.
+tensor) and returns per-element relative error against float64 truth.* **Not met** —
+the harness itself is not written. Hardware and machine characterisation are done.
 
-**Blocking decision: which hardware.** 2060 / M3 Pro / Lambda A10. Nothing else in
-the phase can be designed until this is settled, because it determines whether bf16
-is measured or simulated.
+**Hardware settled: Lambda `gpu_1x_a10`, us-east-1.** Verified NVIDIA A10, compute
+capability 8.6 (Ampere), 23 GB, driver 580.105.08, CUDA 12.8, Python 3.10.12, torch
+2.7.0. Version skew against the Mac (torch 2.8.0 / Python 3.13.1) is recorded
+because reduced-precision defaults have changed between torch releases before.
+
+**Done:** [`tools/probe_hardware.py`](tools/probe_hardware.py) characterises the
+machine's arithmetic so that record travels with every result, and
+[`tools/check_corpus_device.py`](tools/check_corpus_device.py) re-runs the Phase 1
+equivalence gate per device — **18/18 pass on CUDA** at 2.8e-16 – 2.4e-15, so
+equivalence over ℝ is not a platform-specific accident.
+
+**Two of my own claims were falsified by the probe** (full detail in
+[`NOTEBOOK.md`](NOTEBOOK.md)):
+
+- *The A10 does not give a switchable accumulation-width axis.* Both settings of
+  `allow_fp16_reduced_precision_reduction` are bit-identical at 512×4096×512 —
+  cuBLAS evidently never picks a split-k kernel there, so the flag is a no-op and
+  the tensor-core MMA accumulates in fp32 either way.
+- *CPU does not overstate error relative to tensor cores.* Paired test on identical
+  input bits gives **3.9533e-04 (fp16) and 3.0960e-03 (bf16) on both machines**,
+  identical to every printed digit, because rounding the output to the narrow type
+  dominates. Only fp32 shows a real platform gap (CPU 3× worse).
+
+**Still outstanding:** the harness itself, and the mpmath 50-digit cross-check
+confirming float64 is adequate as truth (`mpmath 1.3.0` available).
 
 **The outline's premise here is already known to be wrong.** It says *"bf16 is not
 native on your card — simulate by rounding through `torch.bfloat16` and computing
@@ -171,8 +222,12 @@ method everyone uses would find it.
 1. **Background** — drafted, [`BACKGROUND.md`](BACKGROUND.md)
 2. **Method** — not started; the bf16-simulation subsection is likely moot
 3. **Results** — not started
-4. **Threats to validity** — needs revision before it is written: "simulated bf16"
-   is probably replaced by "accumulation width differs from production tensor cores"
+4. **Threats to validity** — needs revision before it is written. "Simulated bf16"
+   is gone (nothing is simulated). Its intended replacement, "accumulation width
+   differs from production tensor cores," is **also gone** — measured identical on
+   CPU and A10 at fp16/bf16. What replaces both: output quantisation to the narrow
+   type dominates matmul error, so matmul results say little about accumulation;
+   and one shape class was tested for that, not all
 5. **What it means** — not started
 6. **Related work** — citation spine exists in [`papers/README.md`](papers/README.md)
 
@@ -183,7 +238,7 @@ method everyone uses would find it.
 | Criterion | Standing |
 |---|---|
 | Phase 1 stalls — corpus cannot be constructed | **did not fire.** All six built, all exactly equivalent over ℝ |
-| Phase 2's fp16 simulation doesn't track native | **likely moot.** No simulation needed on either candidate machine |
+| Phase 2's fp16 simulation doesn't track native | **retired.** A10 is Ampere; bf16 is native and nothing is simulated |
 | Phase 4 shows error 3+ orders inside tolerance everywhere | **unknown — not yet measured** |
 
 On the third: an fp32 sanity check was run during Phase 1 to confirm no corpus pair
@@ -198,10 +253,16 @@ denominators discussed above. Phases 3–5 are what actually test C1.
 
 ## Open decisions
 
-1. **Hardware** — 2060, M3 Pro, or Lambda A10. Blocks Phase 2. Current lean is the
-   A10: Ampere is the first architecture with native bf16, and it makes accumulation
-   width a switchable experimental axis rather than a platform confound.
-2. **If the A10 is chosen** — amend the roadmap's `$0 / no rental, no clock` line,
-   or record the deviation in `NOTEBOOK.md`.
-3. **Threats-to-validity list** — revise before Phase 6 is drafted; at least one
-   entry is being replaced rather than removed.
+1. ~~**Hardware**~~ — **resolved.** Lambda A10, us-east-1. Native bf16 was the
+   deciding factor and it held up. The secondary argument I made for it — a
+   switchable accumulation-width axis — did not; see Phase 2.
+2. **Amend the roadmap's `$0 / no rental, no clock` line**, or record the deviation.
+   Still open. The A10 is rented; the roadmap says it would not be.
+3. **Differential vs absolute reporting** — see the open question above. Needs
+   settling before Phase 4 is designed, because it determines what the headline
+   table's columns are. It does *not* move any registered threshold.
+4. **Threats-to-validity list** — revise before Phase 6. Two entries are now gone
+   rather than replaced, which leaves the section thinner than the roadmap assumed
+   and means it needs new entries, not edits to old ones.
+5. **Phase 3 prerequisite** — the TransformerOp checkpoint still has to be trained
+   before any realistic-activation work can start. Now the critical path.

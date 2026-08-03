@@ -143,6 +143,11 @@ def matmul_accumulate(device):
             if s is not None and hasattr(torch.backends.cuda.matmul, flag):
                 setattr(torch.backends.cuda.matmul, flag, s)
             entry[f"{flag}={s}" if s is not None else "native"] = _rel(a @ b, ref)
+        # leave it pinned rather than wherever the loop happened to end. False is
+        # the accurate-reduction setting; the point is that it is chosen, not
+        # inherited from the last iteration.
+        if device == "cuda" and hasattr(torch.backends.cuda.matmul, flag):
+            setattr(torch.backends.cuda.matmul, flag, False)
         out[str(dt).split(".")[-1]] = entry
     return out
 

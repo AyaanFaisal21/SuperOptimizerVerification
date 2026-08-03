@@ -143,6 +143,81 @@ arithmetic so that record can travel with every result.
 4. **Determinism.** Repeated identical matmuls are bitwise equal within a process.
 5. **float64.** Works; roughly 20–40× slower than fp32 (A10 is nominally 1:32).
 
-**Outcome.** — pending, next entry.
+**Outcome.** Probe run on the A10. Predictions 1, 2, 4, 5 held; 3 held in the
+direction I flagged against myself, and a fourth thing turned up that neither the
+prediction nor the roadmap anticipated.
+
+| Check | Predicted | Measured |
+|---|---|---|
+| `cuda.matmul.allow_tf32` | False | **False** ✓ |
+| `cudnn.allow_tf32` | True | **True** ✓ |
+| fp32 matmul, TF32 off | ~1e-7 | **3.98e-07** ✓ |
+| fp32 matmul, TF32 on | ~1e-3 | **2.99e-04** (ratio 750×, I said 10³–10⁴) |
+| fp16/bf16 stagnation probe | stagnates | **stagnates, both** ✓ |
+| reduced-precision-reduction flags | little or no difference | **bit-identical** ✓ |
+| matmul repeatable bitwise | yes | **yes** ✓ |
+| fp64 slowdown | 20–40× | **35.2×** ✓ |
+
+Corpus re-checked on CUDA: **18/18 cells pass** the float64 equivalence gate at
+2.8e-16 – 2.4e-15, same magnitudes as CPU. Equivalence over ℝ is not a
+platform-specific accident.
+
+**Read — two claims of mine are now falsified, and both were things I told Ayaan
+when recommending this machine.**
+
+*First: the A10 does not make accumulation width a switchable experimental axis.*
+I argued `allow_fp16_reduced_precision_reduction` and its bf16 twin would give the
+in-type vs fp32-accumulate contrast on real hardware. Measured, the two settings
+are **bit-identical** — 3.972063525748143e-04 either way. Almost certainly cuBLAS
+never selected a split-k kernel at 512×4096×512, so the flag was a no-op; the
+tensor-core MMA accumulates in fp32 regardless. Precise statement: the flag has no
+observable effect *at this shape*, which is not the same as accumulation width
+never mattering. But the switchable axis I promised is not there.
+
+*Second: CPU does not overstate error relative to tensor cores.* I claimed torch
+CPU accumulating bf16 in bf16 would inflate error versus a GPU accumulating in
+fp32. Paired test, identical input bits shipped to both machines:
+
+| dtype | Mac M3 CPU | A10 CUDA |
+|---|---|---|
+| fp32 | 2.6421e-06 | 8.7677e-07 |
+| fp16 | **3.9533e-04** | **3.9533e-04** |
+| bf16 | **3.0960e-03** | **3.0960e-03** |
+
+Identical to every printed digit at fp16 and bf16. The reason is that **rounding
+the output to the narrow type dominates everything else**: half an ulp is 4.88e-04
+for fp16 and 3.9e-03 for bf16, and the measurements sit right at that scale. The
+accumulation pathway is entirely masked. Only fp32 shows a genuine platform gap
+(CPU 3× worse), because fp32 output has enough mantissa not to mask it.
+
+This narrows to matmul specifically. The reduction pairs produce one scalar per row
+from thousands of accumulation steps, so output quantisation cannot dominate there
+the way it does here — that has to be measured separately, not assumed either way.
+
+**The thing nobody predicted, and it may reframe half the claim.** At fp16 and
+bf16, an **untransformed matmul already exceeds the `1e-4` gate** — 3.95e-04 and
+3.10e-03 against exact arithmetic on its own inputs. Before any transformation is
+applied. The identity fails.
+
+C1's second clause says the gap "widens under the reduced precisions that
+production inference runs in." That is at risk of being trivially true: precision
+alone blows the tolerance, no superoptimizer required. The sharp question is
+whether a transformation adds error **beyond what the baseline already suffers at
+that precision** — i.e. err(variant vs truth) against err(baseline vs truth), not
+just against the absolute gate.
+
+No threshold moves. T1 and the registered gate stand exactly as written. What this
+changes is the *analysis plan*: the differential has to be co-reported with the
+absolute gate, or the bf16 column will be a row of failures that says nothing about
+transformations. And the observation stands on its own as a result — Axon validates
+at `rtol=atol=1e-4` in FP32, and that gate is simply **inapplicable** at the
+precision production actually runs at, independent of any superoptimizer. What the
+field substitutes at bf16 is not stated in any of the three papers.
+
+**Also worth recording.** TF32 on costs 750× accuracy and lands at 2.99e-04 — over
+the gate by itself. `cudnn.allow_tf32` is True by default and left that way; it does
+not touch matmul, but any future conv path would need the same treatment. Every
+script in this repo pins `matmul.allow_tf32 = False` explicitly rather than
+inheriting it.
 
 ---

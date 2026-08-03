@@ -1,4 +1,7 @@
+# paper contents stay out of version control -- papers/README.md is the
+# committed artifact. .txt too: extracted full text is still the paper.
 papers/*.pdf
+papers/*.txt
 __pycache__/
 *.py[cod]
 .gen/
