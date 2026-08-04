@@ -103,6 +103,80 @@ measures, and which each paper's own limitations section implicitly invites.
 
 ---
 
+## Verdict — 2026-08-04
+
+Registered 2026-08-03, measured across Phases 1–5. **Neither C1 nor A1 is correct as
+written.** The answer is a third thing neither anticipated.
+
+### C1, clause 1 — *transformations admit FP error exceeding the 1e-4 FP32 threshold*
+
+**Satisfied, but by a mechanism that does not support its implied narrative.**
+
+`matmul_k_tiling` exceeds the gate on **14% of draws** under ordinary uniform
+sampling at fp32, at a realistic shape — no seeding required. That is an existence
+proof at realistic inputs.
+
+But its **relative** error is 8.65e-07, a hundredfold *inside* the tolerance. It
+fails because absolute error is relative error × output magnitude, and matmul output
+grows as σ²√K. The transformation is not numerically dangerous; the threshold is
+scale-dependent.
+
+### C1, clause 2 — *the gap widens under reduced precision*
+
+**True and uninformative.** Floors move ~1e-6 → ~1e-2 → ~1e-1, but `d/floor ≈ 1` for
+two-thirds of the corpus, so the transformation contributes nothing beyond what
+precision itself costs. And Axon states its tolerance for FP32 only, so the clause
+measures against a gate nobody applies at bf16.
+
+### A1 — *no such transformation at realistic shapes and activation distributions*
+
+**Holds for distributions. Fails for shapes.**
+
+- *Activation distributions* — **A1 holds.** Every real site passes with ~10×
+  headroom, including `post_ln`, zero-mean by construction and reaching row condition
+  number **368,927** — 400× more ill-conditioned than uniform sampling produces.
+- *Kernel shapes* — **A1 fails.** `matmul_k_tiling` fails at K=512 stochastically and
+  at K=2048 outright. Production LLMs run K = 4096–16384.
+
+### What is actually true
+
+**The gate is dimensionally incoherent.** `atol = 1e-4` is an absolute constant
+applied to tensors of arbitrary magnitude. Whether a *correct* ℝ-equivalent
+transformation passes depends on output scale — which depends on K and input
+variance — and not on its soundness. The same code, unchanged:
+
+| K | abs err | verdict |
+|---|---|---|
+| 128 | 1.34e-05 | pass |
+| 512 | 7.63e-05 | pass (0.8× atol) |
+| 2048 | 2.37e-04 | **fail** |
+
+Across all six pairs the relative errors span 3.3e-07 – 1.0e-06, a factor of 3. The
+absolute errors span four orders of magnitude, entirely because the output magnitudes
+do. The gate measures how large the numbers are, not whether the rewrite is sound.
+
+**The actionable consequence:** a relative-only gate, or an `atol` scaled to output
+magnitude, would make the check measure the transformation. A fixed absolute
+tolerance becomes progressively unusable as models scale.
+
+### Retracted along the way
+
+- **"The field states 1e-4 but practises 1e-2, a 100× gap."** Category error — Axon
+  (AWS/UIUC) compared against MPK runtime-kernel tests (CMU): different groups,
+  different subsystems, different artifact. See ERRATA §1.5.
+- **"C1 survives at fp32 via seeding."** The seeded arrangements sit **+10.4σ**
+  outside the real distribution. They show these transformations *can* diverge, not
+  that they *do*.
+
+### Confidence
+
+Highest on the scale-dependence result — it follows from measurement plus dimensional
+analysis, so it cannot be undone by having misread anyone's code. Lowest on anything
+concerning whether real workloads reach adverse arrangements, which this project did
+not establish and did not attempt to.
+
+---
+
 ## Amendments
 
 ### 2026-08-03 — Phase 1 float64 bug check is gated on scale-relative error
