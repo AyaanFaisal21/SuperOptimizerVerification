@@ -321,6 +321,84 @@ the one-pass form is not the weaker variant — `E[x²] − μ²` has no cancell
 μ ≈ 0. Its instability needs biased inputs, which is what the activation fixtures
 and Phase 5 are for.
 
+## 2026-08-03 — why only `matmul_k_tiling` breaks: it is the atol, not the transformation
+
+**Setup.** `matmul_k_tiling` fails 14% under plain uniform sampling at fp32 while
+five other pairs fail 0%. Asked what is special about it. Measured rather than
+reasoned.
+
+**Outcome 1 — the failure is a single element.** In a failing trial, **1 of 4096**
+output elements trips the gate. Its `|b|` is 1.465e-01 against an overall median of
+1.105e+02 — **750× below typical**. Absolute error there is 1.422e-04, barely over
+`atol = 1e-4`. So `rtol·|b|` offers no protection at that element and only `atol`
+stands between the kernel and a failure.
+
+**Outcome 2 — failure rate tracks output element count** (K=512 fixed, uniform):
+
+| outputs | fail rate |
+|---|---|
+| 256 | 2% |
+| 1,024 | 2% |
+| 4,096 | 22% |
+| 16,384 | 48% |
+
+More output elements, more chances to draw one from the near-zero tail. Extreme-value
+statistics, not a property of the rewrite.
+
+**Outcome 3 — the relative errors are all the same. The absolute errors are not.**
+
+| pair | #outputs | typ \|out\| | rel err | abs err | vs atol |
+|---|---|---|---|---|---|
+| `softmax_online` | 65,536 | 5.90e-04 | 9.47e-07 | 2.79e-08 | 0.0× |
+| `layernorm_variance` | 65,536 | 8.52e-01 | 3.32e-07 | 4.29e-06 | 0.0× |
+| `scalar_past_matmul` | 4,096 | 6.75e-01 | 1.04e-06 | 4.05e-06 | 0.0× |
+| `split_reduction` | 64 | 2.28e+01 | 6.12e-07 | 3.81e-05 | 0.4× |
+| `reassociation` | 64 | 2.28e+01 | 7.35e-07 | 4.58e-05 | 0.5× |
+| **`matmul_k_tiling`** | 4,096 | 1.53e+01 | 8.65e-07 | **7.63e-05** | **0.8×** |
+
+**Every pair has relative error between 3.3e-07 and 1.0e-06** — within a factor of 3
+of each other. What differs is **output magnitude**, and absolute error is the
+product of the two. `matmul_k_tiling` sits at 0.8× atol, right on the boundary, which
+is exactly why it fails *stochastically* rather than never or always.
+
+**Outcome 4 — and it is K that puts it there.** Same transformation, same code, only
+K varies:
+
+| K | typ \|out\| | abs err | verdict |
+|---|---|---|---|
+| 128 | 7.8 | 1.34e-05 | under atol |
+| 512 | 15.3 | 7.63e-05 | under atol (0.8×) |
+| **2048** | 31.5 | **2.37e-04** | **OVER atol** |
+
+**Read — this is a better finding than the one it replaces.**
+
+`atol = 1e-4` is an absolute constant applied to tensors of arbitrary scale. A matmul
+output grows as σ²√K; a row-reduction output grows as σ√n — one power of σ slower.
+So the same rewrite passes at K=128 and fails at K=2048 **with nothing about its
+correctness having changed.** The gate is not measuring the transformation; it is
+measuring whether the numbers flowing through it happen to be large.
+
+Why each of the others survived, mechanically:
+
+- **`softmax_online`** — outputs are probabilities, magnitude ~1/n ≈ 5.9e-04. `atol`
+  is *larger than typical outputs*. Structurally immune, and no seeding could change
+  that.
+- **`layernorm_variance`** — outputs normalised to O(1) by construction. 25× under.
+- **`scalar_past_matmul`** — the α = 1/√K scaling shrinks the output to O(1). **The
+  transformation under test is what protects it.**
+- **`split_reduction` / `reassociation`** — magnitude 22.8, abs err ~4e-5, i.e. 0.4–0.5×
+  atol. Genuinely close, but only **64 output elements**, so almost no exposure to the
+  near-zero tail. Widen the output and they should start failing too.
+
+**The prediction this makes, and it is checkable.** Production LLM matmuls run
+K = 4096–16384. At K = 2048 a correct, ℝ-equivalent tiling already exceeds a fixed
+`atol = 1e-4`. So **a fixed absolute tolerance becomes progressively unusable as
+models scale**, for reasons entirely unrelated to whether the rewrite is sound. That
+is derived from measurement plus dimensional analysis rather than from anyone's code,
+which is what makes it safer ground than the claim retracted below.
+
+---
+
 ## 2026-08-03 — Phase 5 stress-tested: the seeds are 10σ out, and A1 mostly holds
 
 **Setup.** Asked how trustworthy the Phase 5 result is. Rather than argue it, measure
