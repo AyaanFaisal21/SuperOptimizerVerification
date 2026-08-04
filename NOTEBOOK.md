@@ -389,6 +389,52 @@ is the thing under study. But the distinction should be stated, not blurred.
 
 ---
 
+## 2026-08-03 — Phase 5, seeded inputs (prediction)
+
+**Setup.** The decisive experiment. At fp32 the floor is ~1e-6 against a 1e-4 gate,
+so C1 needs ~100× amplification, and neither `randn` (Phase 4 synthetic) nor real
+activations (Phase 4 activation arm) supply it. Seeding is the only route left.
+
+The credibility constraint is what makes this hard: anything can be broken by inputs
+nobody would feed it. `fpgap/seeds.py` answers it by **seeding the arrangement, not
+the magnitudes** — every generated value is clamped into `REAL_BOX = (-22.051,
+21.328)`, the widest range observed across the Phase 3 fixtures. No denormals, no
+near-overflow. What is adversarial is which magnitudes sit next to each other and in
+what order they accumulate. A row of values the model actually produced, permuted
+into an order it happens not to produce, is still realistic.
+
+Five strategies, `uniform` as the control (it is what the field samples): plus
+`wide_range`, `cancellation`, `dynamic_mix`, `shifted`. 100 trials each, fp32.
+
+**Prediction.**
+
+1. **`uniform` catches nothing — 0% on every pair.** Phase 4 already established
+   this; if it is nonzero the two experiments contradict each other.
+2. **`cancellation` breaks the reduction pairs, >80%.** Summation condition number is
+   `Σ|xᵢ| / |Σxᵢ|`. The strategy drives the denominator to ~n·1e-4 while the numerator
+   stays ~n·10, giving ~1e5. Against fp32 eps 1.2e-7 that is ~1.2e-2 — two orders over
+   the gate.
+3. **`shifted` breaks `layernorm_variance` at ~100%.** It drives μ²/E[x²] to ≈0.99999,
+   so `E[x²] − μ²` retains ~8.6e-6 of its magnitude and amplifies fp32 eps to ~1.4e-2.
+   This is the pair's known failure mode, and the one zero-mean activations never
+   reach.
+4. **`dynamic_mix` is weaker than I would like at fp32** — maybe 20–60%. One value at
+   ~19 among 1024 at ~1e-4: an ulp of 19 in fp32 is ~1.9e-6, so the small addends sit
+   *above* the stagnation threshold and are not fully lost. It should bite much harder
+   at fp16/bf16.
+5. **Therefore C1 survives at fp32 under adversarial-but-realistic inputs**, and the
+   headline becomes the *gap between catch rates* — near 0% for what everyone samples
+   against a high rate for seeded. That is the Ruler §6.2 result transferred.
+
+If prediction 5 fails — if seeded sampling also finds nothing at fp32 — then A1 wins
+decisively, the roadmap's third kill criterion fires, and this is a shorter paper
+that says the field's shortcut is empirically justified. That outcome is stated here
+in advance so it cannot be reframed later as a disappointment.
+
+**Outcome.** — pending, next entry.
+
+---
+
 ## 2026-08-03 — Phase 4 activation arm, with a shape-matched control
 
 **Setup.** The corpus against the Phase 3 fixtures — 24 cells. Each pair is fed the

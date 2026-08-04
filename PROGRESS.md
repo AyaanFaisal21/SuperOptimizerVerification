@@ -17,9 +17,8 @@ a finding rather than quietly absorbed.
 | 5 — Seeded-input experiment | 3–4 days | not started | no |
 | 6 — Writeup | 5–7 days | Background only | no |
 
-Four of six phases complete, ahead of the outline's calendar, plus the synthetic arm
-of Phase 4. What remains: the activation arm of Phase 4, all of Phase 5, and the
-writeup.
+Five of six phases complete, ahead of the outline's calendar. What remains is Phase 5
+(the seeded-input experiment) and the writeup.
 
 **No claim is settled.** At fp32 on synthetic inputs A1 holds cleanly — but that is
 one cell class under the conditions least likely to break it, and at fp32 the seeded
