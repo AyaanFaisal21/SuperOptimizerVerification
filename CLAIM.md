@@ -139,3 +139,49 @@ bears on C1 vs A1 has moved.
 few thousand such values exact in every order, so the reduction pairs reported a
 perfect `0.000e+00`. Passing for the wrong reason. `corpus._randn` now draws at
 float64 and rounds down; `test_float64_reference_actually_rounds` pins it.
+
+### 2026-08-03 — the gate compares against the baseline, not against truth
+
+**What changed.** The *Gate* defined above compares the variant against float64
+truth `T`. That is not what the systems do. The gate is now the **differential**,
+
+```
+pass  ⟺  ∀i.  |gᵢ − bᵢ| ≤ atol + rtol·|bᵢ|,    rtol = atol = 1e-4
+```
+
+where `b` is the **baseline evaluated at the same precision as `g`**. The
+as-registered form (against `T`) is **retained and co-reported**, never replaced.
+
+**Why — verified against the paper, not from memory.** Axon §4.6 states its check
+literally as `|emitted_code − reference| ≤ atol + rtol|reference|` with
+`rtol = atol = 10⁻⁴`, on FP32 — comparing the emitted kernel against a *reference
+implementation*, not against a high-precision oracle. Mirage tests a candidate
+μGraph against the input program; Prism tests generated kernels against the
+reference. All three compare **candidate against original**, both in floating point.
+
+C1 is a claim about "the `rtol = atol = 1e-4` FP32 threshold **used to validate
+them**." An instrument that compares against float64 truth measures a gate nobody
+uses, so leaving this in place would mean not testing C1 at all.
+
+**This is a correction of a factual error about the systems, not a re-tuned
+parameter.** The trigger was textual — readable in Axon §4.6 with no data — and it
+should have been caught in Phase 0. `1e-4`, the `≥1%` bar, and T1–T4 are all
+unchanged. Only *what is compared* changes.
+
+**Direction of effect: measured, and it cuts both ways.** At `split_reduction/fp32`
+the differential (1.53e-06) is *larger* than variant-vs-truth (2.59e-07), making C1
+easier there. At `layernorm_variance/bf16` it is 1.60e-02 against 3.45e-01, making
+C1 far harder. The fp32 verdict does not move: all six pairs still pass. The
+correction did not manufacture a positive result.
+
+**Dual-reporting rule.** Every cell reports the gate under **both** definitions.
+Both quantities are computed anyway, so this costs nothing and makes the amendment
+auditable rather than something a reader must take on trust. Any headline cell where
+the two disagree is itself reported.
+
+**Third quantity, added.** With the baseline now evaluated at test precision, its
+own deviation from truth — the **precision floor** — is available for free. It is
+recorded per cell, along with `d/floor`. This is what separates "this precision is
+inaccurate" from "this transformation is inaccurate," and at reduced precision the
+distinction is the entire result: a differential that merely tracks the floor says
+nothing about the transformation.

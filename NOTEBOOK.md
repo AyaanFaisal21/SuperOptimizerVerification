@@ -221,3 +221,46 @@ script in this repo pins `matmul.allow_tf32 = False` explicitly rather than
 inheriting it.
 
 ---
+
+## 2026-08-03 — Phase 2 closed; Phase 4 synthetic arm (prediction)
+
+**Setup.** Three things landed before this run. `CLAIM.md` amended: the gate is now
+the differential (variant vs baseline at the same precision), verified against
+Axon §4.6's literal text, with the as-registered form retained and co-reported.
+`fpgap/harness.py` emits floor / total / differential per cell plus both gate
+readings and both T1 readings. `tools/validate_reference.py` confirms float64 is
+adequate as truth — worst drift against mpmath at 50 digits is **8.2e-16, 4× float64
+eps**, twelve orders below the 1e-4 gate. That closes Phase 2's exit criteria.
+
+Now the Phase 4 synthetic arm: 6 pairs × 3 shape classes × 3 precisions = 54 cells,
+`randn` inputs. The realistic-activation arm waits on the checkpoint currently
+training on the A10.
+
+**Disclosure.** The MLP-shape column is *not* a blind prediction — I measured those
+18 cells while answering a question about the gate correction, and they are quoted
+in the previous entry. The predictions below are therefore about what I have **not**
+seen: the small and attention shape classes, and how the ratios move with shape.
+
+**Prediction.**
+
+1. **fp32: all 18 cells pass the Axon gate**, at every shape class. No fp32 cell
+   trips T1 (≥1% of elements over 1e-4 relative). The floor is ~1e-6 against a 1e-4
+   gate — two orders of headroom — and `randn` cannot supply the ~100× amplification
+   needed to close it.
+2. **fp16 and bf16: all 36 cells fail the Axon gate.** Not because the
+   transformations are bad but because the differential tracks the precision floor.
+3. **`d/floor ≈ 1` for the reduction pairs at every shape.** Both sides scale with
+   the same accumulation length, so the ratio should be roughly shape-invariant even
+   as the absolute numbers grow with row length. If this instead drifts with shape,
+   my reading of why the reductions behave this way is wrong.
+4. **`matmul_k_tiling` keeps `d/floor > 1` and it tracks K.** K is 256 / 768 / 512
+   for small / mlp / attention, and d/floor was 3.48 at fp16-mlp, so I expect the
+   attention and small cells to come in lower than mlp — ordering by K rather than
+   by shape-class name.
+5. **The two gate definitions agree on the verdict in the large majority of cells.**
+   Where they disagree, it should be `layernorm_variance`, whose floor is enormous
+   at reduced precision while its differential is small.
+
+**Outcome.** — pending, next entry.
+
+---
