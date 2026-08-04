@@ -321,6 +321,128 @@ the one-pass form is not the weaker variant — `E[x²] − μ²` has no cancell
 μ ≈ 0. Its instability needs biased inputs, which is what the activation fixtures
 and Phase 5 are for.
 
+## 2026-08-03 — what the field's code actually uses: 1e-2, not 1e-4
+
+**Setup.** Chasing the loose end under the sharpest claim: does Prism's artifact
+state a validation tolerance? Prism has **no artifact link in the paper** — every
+GitHub URL in it cites someone else's project. But Prism's author list is Mengdi Wu,
+Xiaoyu Jiang, Oded Padon, **Zhihao Jia** — CMU, i.e. the *same group as Mirage*. And
+Mirage is public. So the question becomes answerable from the same lab's shipping
+code.
+
+**Prediction.** I expected to find either no tolerance at all, or something in the
+1e-3 range, and to have to argue from absence.
+
+**Outcome — census of every numeric tolerance in `mirage-project/mirage`:**
+
+| value | sites |
+|---|---|
+| **1e-2** | **66** |
+| 2e-2 | 6 |
+| 1e-1 | 6 |
+| 1e-4 | 4 |
+| 1e-3 | 3 |
+| 1e-5 / 2e-3 / 1e-6 | 4 |
+
+Roughly **78 of ~90 genuine sites are 1e-2 or looser.** The dtype context: bfloat16
+appears in 87 files, float16 in 113. Every `rtol = atol = 1e-2` test I checked
+individually is bf16 — `test_mla_decode`, `test_matmul_ws_mpk`,
+`test_matmul_splitk`, `test_moe_linear`, `test_allreduce` (`TestConfig.RTOL = 1e-2`,
+`dtype=torch.bfloat16`).
+
+And one comment says it outright. In `demo/demo_hopper/main.py`, an fp8
+weight-only-quantised model is checked at `atol=1e-1`, above a line recording that
+`atol=1e-2` **failed**.
+
+**Read. This is the result, and it reframes the project.**
+
+The literature states **one** tolerance: Axon's `rtol = atol = 1e-4`, explicitly *on
+FP32*. The code that actually ships reduced-precision kernels uses **1e-2** — a
+**100× gap** — and 1e-1 when precision drops further. Prism states nothing at all
+while benchmarking entirely in half precision. Nobody documents the gap, justifies
+the constant, or gives a method for choosing it. It is folklore, arrived at by
+loosening until tests pass.
+
+**Our floor measurements explain the folklore.** Measured bf16 differentials for the
+matmul-shaped pairs — which is what Mirage's bf16 tests exercise — are **4.55e-03 to
+1.10e-02**. The empirically-chosen 1e-2 sits exactly at the top of that range. The
+constant is not arbitrary; it is the precision floor, discovered by trial and error
+and never written down. The fp8 case is the same story one precision lower: floor
+rises, 1e-2 fails, 1e-1 gets adopted.
+
+**This also disposes of the strongest objection to the fp16 work.** The complaint
+would have been that applying Axon's FP32 number at bf16 is a scope violation and a
+strawman. It is — and we no longer need to. The finding is not "1e-4 fails at bf16."
+It is: *practice already abandoned 1e-4 without saying so, landed on a number that
+matches the precision floor, and has no principled account of why.* We can supply
+that account.
+
+The contribution turns constructive. Not "the field's gate is wrong" but "here is
+what your empirical constant is measuring, and here is how to derive it instead of
+tuning it."
+
+**Caveat to carry.** These are Mirage's *test and demo* tolerances, not necessarily
+the internal search-time verification threshold. Mirage's search-time equivalence is
+the finite-field PIT, which has no float tolerance at all — so these are exactly the
+end-of-pipeline float checks that stand between a generated kernel and a user, which
+is the thing under study. But the distinction should be stated, not blurred.
+
+---
+
+## 2026-08-03 — Phase 4 activation arm, with a shape-matched control
+
+**Setup.** The corpus against the Phase 3 fixtures — 24 cells. Each pair is fed the
+tensor the corresponding real kernel would actually see: `layernorm_variance` gets
+the residual stream *entering* LayerNorm, `softmax_online` gets pre-softmax attention
+scores, the matmul pairs get activation @ activation (which is what Q·Kᵀ is), and the
+reductions are run on both the centred residual stream and the biased post-GELU
+tensor to separate distribution from shape.
+
+**A confound I nearly shipped.** Comparing these cells against the synthetic sweep
+directly would confound distribution with shape — the fixtures have different column
+counts (384, 1536, 256) than the synthetic shape classes, and reduction error grows
+with row length. So the comparison is against **randn at the identical shapes**.
+Without that control the whole real-vs-synthetic question is unanswerable.
+
+**Prediction.** Given the fixture statistics (residual-stream row cancellation max
+0.0158), real activations behave essentially like `randn` at fp32, and no cell flips
+its verdict.
+
+**Outcome.** fp32: **8/8 pass.** fp16/bf16: **16/16 fail.** No verdict differs from
+the synthetic arm. The `d/floor` three-class structure reproduces: reductions
+0.95–1.28, matmul pairs 1.91–2.51, `layernorm_variance` 0.28–0.81.
+
+Distribution effect with shape pinned (floor ratio, real ÷ randn):
+
+| site | fp16 | bf16 |
+|---|---|---|
+| `resid_pre_ln` (centred) | 0.96 | 1.49 |
+| `post_gelu` (biased) | **2.33** | **3.58** |
+| `attn_scores` | **3.18** | 0.80 |
+| activation @ activation (matmul) | 0.71–1.11 | 0.73–1.11 |
+
+**Read.** The roadmap's hypothesis — *the field validates on synthetic inputs and
+ships on real ones* — is **partially supported, and the honest version is modest**.
+Real activations do produce more error than `randn` at matched shape, but only at
+the biased sites, and only by **2.3–3.6×**. Centred sites are indistinguishable
+(0.96–1.49). No cell changes verdict, and `d/floor` is stable across distributions
+(reductions 0.98–1.28 real vs 1.01–1.15 randn), so the *transformation's* behaviour
+does not depend on the distribution — only the floor moves under it.
+
+Two cells go the other way and are worth recording rather than burying:
+`matmul_k_tiling`/fp16 has `d/floor` 2.49 on real activations against **4.01** on
+randn, and `softmax_online`/fp16 reads 0.63 against 1.31. For those, synthetic inputs
+are the *more* adversarial choice.
+
+So "validate on randn, ship on real" is a real effect at the ~3× level, not the
+orders-of-magnitude effect the framing invites. Stated that way it is still worth
+reporting — a 3.6× underestimate of the floor is exactly the size of gap that gets
+absorbed into a hand-tuned tolerance without anyone noticing.
+
+---
+
+## 2026-08-03 — Phase 4 synthetic arm (outcome, continued)
+
 **Read.** At fp32 with synthetic inputs, **A1 holds cleanly** — every pair passes
 with ~2 orders of headroom and nothing approaches T1. Whether C1 survives at fp32
 now rests entirely on Phase 5 seeding, exactly as predicted when the gate was

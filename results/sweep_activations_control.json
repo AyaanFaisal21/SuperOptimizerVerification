@@ -1,0 +1,710 @@
+[
+  {
+    "transformation": "split_reduction",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384
+    ],
+    "precision": "fp16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.008039633260385797,
+      "max_rel": 0.6386887068836473,
+      "frac_over_gate": 0.98046875,
+      "p50": 0.0023811454884707928,
+      "p99": 0.11018417030572891,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.0013631714974474264,
+      "max_rel": 0.4361851332398317,
+      "frac_over_gate": 0.92578125,
+      "p50": 0.0009458585409447551,
+      "p99": 0.05499066039919853,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.008452192287374538,
+      "max_rel": 1.8484848484848484,
+      "frac_over_gate": 0.92578125,
+      "p50": 0.0025536587927490473,
+      "p99": 0.1459493786096573,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.0513156525461889,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "split_reduction",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      1536
+    ],
+    "precision": "fp16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.010958179050796,
+      "max_rel": 1.3893287848300309,
+      "frac_over_gate": 0.984375,
+      "p50": 0.004533807747066021,
+      "p99": 0.2114935666322708,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.002032563035227817,
+      "max_rel": 0.4300494383220287,
+      "frac_over_gate": 0.97265625,
+      "p50": 0.0013419436290860176,
+      "p99": 0.07621977478265762,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.01263823064770932,
+      "max_rel": 5.037735849056604,
+      "frac_over_gate": 0.9453125,
+      "p50": 0.004831906408071518,
+      "p99": 0.20496809482574463,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.1533148517765168,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "split_reduction",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384
+    ],
+    "precision": "bf16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.03376805516129623,
+      "max_rel": 12.683781581092095,
+      "frac_over_gate": 1.0,
+      "p50": 0.01829947531223297,
+      "p99": 0.7210933566093445,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.01001559855261049,
+      "max_rel": 12.683781581092095,
+      "frac_over_gate": 0.994140625,
+      "p50": 0.007271303795278072,
+      "p99": 0.6721571087837219,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.03347280334728033,
+      "max_rel": 1.6603773584905661,
+      "frac_over_gate": 0.91796875,
+      "p50": 0.020068909972906113,
+      "p99": 0.631203830242157,
+      "gate_pass": false
+    },
+    "d_over_floor": 0.9912564756067354,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "split_reduction",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      1536
+    ],
+    "precision": "bf16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.06538744329346645,
+      "max_rel": 3.594619144209192,
+      "frac_over_gate": 1.0,
+      "p50": 0.03928884491324425,
+      "p99": 1.6387786865234375,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.013522986799104476,
+      "max_rel": 2.2452686782701226,
+      "frac_over_gate": 0.994140625,
+      "p50": 0.010814348235726357,
+      "p99": 0.48694732785224915,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.07048458149779736,
+      "max_rel": 9.545454545454545,
+      "frac_over_gate": 0.966796875,
+      "p50": 0.04111003875732422,
+      "p99": 2.172154188156128,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.0779528598702715,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "reassociation",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384
+    ],
+    "precision": "fp16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.008039633260385797,
+      "max_rel": 0.6386887068836473,
+      "frac_over_gate": 0.98046875,
+      "p50": 0.0023811454884707928,
+      "p99": 0.11018417030572891,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.0007533505269125074,
+      "max_rel": 0.32440909237882753,
+      "frac_over_gate": 0.923828125,
+      "p50": 0.0007501323707401752,
+      "p99": 0.031501296907663345,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.008452192287374538,
+      "max_rel": 1.6666666666666667,
+      "frac_over_gate": 0.9140625,
+      "p50": 0.002537001855671406,
+      "p99": 0.1496407687664032,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.0513156525461889,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "reassociation",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      1536
+    ],
+    "precision": "fp16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.010958179050796,
+      "max_rel": 1.3893287848300309,
+      "frac_over_gate": 0.984375,
+      "p50": 0.004533807747066021,
+      "p99": 0.2114935666322708,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.000807906685095839,
+      "max_rel": 0.21401862931919033,
+      "frac_over_gate": 0.9375,
+      "p50": 0.000683960213791579,
+      "p99": 0.04514531418681145,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.011058451816745656,
+      "max_rel": 3.9643605870020964,
+      "frac_over_gate": 0.94921875,
+      "p50": 0.004882046952843666,
+      "p99": 0.22194375097751617,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.0091504953044523,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "reassociation",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384
+    ],
+    "precision": "bf16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.03376805516129623,
+      "max_rel": 12.683781581092095,
+      "frac_over_gate": 1.0,
+      "p50": 0.01829947531223297,
+      "p99": 0.7210933566093445,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.006439668481751904,
+      "max_rel": 9.014669926650367,
+      "frac_over_gate": 0.986328125,
+      "p50": 0.004560861736536026,
+      "p99": 0.4907034635543823,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.03347280334728033,
+      "max_rel": 1.8571428571428572,
+      "frac_over_gate": 0.931640625,
+      "p50": 0.021038033068180084,
+      "p99": 0.5001155138015747,
+      "gate_pass": false
+    },
+    "d_over_floor": 0.9912564756067354,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "reassociation",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      1536
+    ],
+    "precision": "bf16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.06538744329346645,
+      "max_rel": 3.594619144209192,
+      "frac_over_gate": 1.0,
+      "p50": 0.03928884491324425,
+      "p99": 1.6387786865234375,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.0064528393675114745,
+      "max_rel": 1.2414836208862203,
+      "frac_over_gate": 0.974609375,
+      "p50": 0.005936169531196356,
+      "p99": 0.39532801508903503,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.06607929515418502,
+      "max_rel": 7.701570680628272,
+      "frac_over_gate": 0.955078125,
+      "p50": 0.04011494293808937,
+      "p99": 2.029332399368286,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.0105808061283794,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "scalar_past_matmul",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384,
+      512
+    ],
+    "precision": "fp16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.00039116565327748285,
+      "max_rel": 72.957867832747,
+      "frac_over_gate": 0.8116378784179688,
+      "p50": 0.00028903817292302847,
+      "p99": 0.013134780339896679,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.0004794521506712587,
+      "max_rel": 0.015496510764443014,
+      "frac_over_gate": 0.7485466003417969,
+      "p50": 0.0002101103018503636,
+      "p99": 0.0006761759286746383,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.0007751937984496124,
+      "max_rel": 14.0,
+      "frac_over_gate": 0.4929008483886719,
+      "p50": 0.0,
+      "p99": 0.013182674534618855,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.9817532340951978,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "scalar_past_matmul",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384,
+      512
+    ],
+    "precision": "bf16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.002820688897153768,
+      "max_rel": 30358.947981842717,
+      "frac_over_gate": 0.975677490234375,
+      "p50": 0.0022975073661655188,
+      "p99": 0.1038416177034378,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.005055985599992693,
+      "max_rel": 0.23273218010060115,
+      "frac_over_gate": 0.9679718017578125,
+      "p50": 0.0016789103392511606,
+      "p99": 0.00536634074524045,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.006211180124223602,
+      "max_rel": 2992.230769230769,
+      "frac_over_gate": 0.49076080322265625,
+      "p50": 0.0,
+      "p99": 0.1041666641831398,
+      "gate_pass": false
+    },
+    "d_over_floor": 2.20200821525941,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "layernorm_variance",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384
+    ],
+    "precision": "fp16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.003097316873669469,
+      "max_rel": 71.58157984246256,
+      "frac_over_gate": 0.8876190185546875,
+      "p50": 0.0006185070378705859,
+      "p99": 0.03739236667752266,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.003097316873669469,
+      "max_rel": 95.77543978995008,
+      "frac_over_gate": 0.8911692301432291,
+      "p50": 0.0006525899516418576,
+      "p99": 0.039997655898332596,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.0032703488372093025,
+      "max_rel": 4.8828125e+27,
+      "frac_over_gate": 0.4625803629557292,
+      "p50": 0.0,
+      "p99": 0.02631578966975212,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.055865115064846,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "layernorm_variance",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384
+    ],
+    "precision": "bf16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.03486890102359031,
+      "max_rel": 1012.3902132271788,
+      "frac_over_gate": 0.9917704264322916,
+      "p50": 0.014454372227191925,
+      "p99": 0.7250914573669434,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.04593869493703955,
+      "max_rel": 1223.7986329580715,
+      "frac_over_gate": 0.9917653401692709,
+      "p50": 0.014483516104519367,
+      "p99": 0.7207590341567993,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.014044943820224719,
+      "max_rel": 4.6875e+28,
+      "frac_over_gate": 0.2956695556640625,
+      "p50": 0.0,
+      "p99": 0.10526315867900848,
+      "gate_pass": false
+    },
+    "d_over_floor": 0.40279284428042944,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "softmax_online",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      256
+    ],
+    "precision": "fp16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.001965720273670566,
+      "max_rel": 0.008372404676034137,
+      "frac_over_gate": 0.9558334350585938,
+      "p50": 0.0012897123815491796,
+      "p99": 0.004991739522665739,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.0010017757551466948,
+      "max_rel": 0.004152242043923492,
+      "frac_over_gate": 0.9095611572265625,
+      "p50": 0.0005971880163997412,
+      "p99": 0.002483258955180645,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.002577319587628866,
+      "max_rel": 0.006737247353224254,
+      "frac_over_gate": 0.8013916015625,
+      "p50": 0.001327140023931861,
+      "p99": 0.00501253129914403,
+      "gate_pass": false
+    },
+    "d_over_floor": 1.3111324241552782,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "softmax_online",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      256
+    ],
+    "precision": "bf16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.06360089124663565,
+      "max_rel": 0.12169722078046548,
+      "frac_over_gate": 0.9995574951171875,
+      "p50": 0.03718935698270798,
+      "p99": 0.0842423290014267,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.006273806605265765,
+      "max_rel": 0.03599618925964886,
+      "frac_over_gate": 0.98883056640625,
+      "p50": 0.00495343841612339,
+      "p99": 0.020411180332303047,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.05844155844155844,
+      "max_rel": 0.09868421052631579,
+      "frac_over_gate": 0.9879379272460938,
+      "p50": 0.035175878554582596,
+      "p99": 0.07827600836753845,
+      "gate_pass": false
+    },
+    "d_over_floor": 0.9188795517806502,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "matmul_k_tiling",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384,
+      512
+    ],
+    "precision": "fp16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.0003158736659236645,
+      "max_rel": 0.014587844192200862,
+      "frac_over_gate": 0.7042350769042969,
+      "p50": 0.00016952428268268704,
+      "p99": 0.0004337668651714921,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.0010562472816678442,
+      "max_rel": 40.41244307312558,
+      "frac_over_gate": 0.8614158630371094,
+      "p50": 0.00040436466224491596,
+      "p99": 0.017000412568449974,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.0012658227848101266,
+      "max_rel": 39.96,
+      "frac_over_gate": 0.5574417114257812,
+      "p50": 0.0005402485257945955,
+      "p99": 0.017019247636198997,
+      "gate_pass": false
+    },
+    "d_over_floor": 4.007370418514189,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  },
+  {
+    "transformation": "matmul_k_tiling",
+    "shape_class": "matched",
+    "shape": [
+      512,
+      384,
+      512
+    ],
+    "precision": "bf16",
+    "input_kind": "randn",
+    "seed": 20260803,
+    "device": "cpu",
+    "floor": {
+      "scale_rel": 0.002505667744914928,
+      "max_rel": 0.23076923076923078,
+      "frac_over_gate": 0.9634284973144531,
+      "p50": 0.0013550582807511091,
+      "p99": 0.0034679181408137083,
+      "gate_pass": false
+    },
+    "total": {
+      "scale_rel": 0.00656123473500881,
+      "max_rel": 3633.578856152513,
+      "frac_over_gate": 0.9827766418457031,
+      "p50": 0.003231578506529331,
+      "p99": 0.1327127069234848,
+      "gate_pass": false
+    },
+    "differential": {
+      "scale_rel": 0.005076142131979695,
+      "max_rel": 3541.4864864864867,
+      "frac_over_gate": 0.5565948486328125,
+      "p50": 0.004310344811528921,
+      "p99": 0.13302937150001526,
+      "gate_pass": false
+    },
+    "d_over_floor": 2.025864020591461,
+    "verdict": {
+      "gate_axon": false,
+      "gate_as_registered": false,
+      "gates_agree": true,
+      "t1_fail_differential": true,
+      "t1_fail_total": true
+    }
+  }
+]
