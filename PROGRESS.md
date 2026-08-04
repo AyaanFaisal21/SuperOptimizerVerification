@@ -240,29 +240,58 @@ to something other than a residual stream, could differ.
 
 ---
 
-## Phase 4 — Main sweep ⬜ not started
+## Phase 4 — Main sweep ✅
 
-Depends on Phases 2 and 3.
+**Exit criterion:** *raw per-cell results on disk, and the headline table exists.*
+**Met** — 54 synthetic + 24 activation + 16 shape-matched control cells in
+`results/`.
 
-**The outline's estimate looks wrong in a useful direction.** It budgets "4–6 days,
-mostly compute." The harness is Python-loop and kernel-launch-overhead bound, not
-FLOP-bound — `accumulate.py` walks the reduction dim one vectorized op at a time by
-design. Actual GPU time for the full cross product is minutes; the days are
-analysis. A larger GPU than an A10 would buy nothing.
+**fp32: all pass except one.** `matmul_k_tiling` fails **14% of uniform draws** —
+missed by Phase 4's single draw per cell, caught by Phase 5's 100 trials. The T3
+catch-rate phenomenon appearing inside the experiment meant to measure it.
 
-**Conflict to resolve if the A10 is chosen.** The roadmap says *"Runs on your 2060,
-or CPU. No rental, no clock,"* and the totals line says `$0`. Renting breaks that.
-It is a defensible trade — native bf16 is the single most load-bearing hardware
-fact for a claim explicitly about bf16 — but it should be an amendment or a
-recorded deviation, not a silent change.
+**fp16/bf16: all fail, but `d/floor ≈ 1`** for two-thirds of the corpus, so the
+differential merely tracks the precision floor. A fact about the tolerance, not the
+transformations. `d/floor` splits the corpus three ways: reordering-only
+(`reassociation` 1.00, `split_reduction` 0.97, `softmax_online` 0.88), amplifying
+(`scalar_past_matmul` 1.80, `matmul_k_tiling` 2.96), suppressed
+(`layernorm_variance` 0.40).
+
+**Real vs synthetic, shape pinned.** Real activations produce **2.3–3.6×** more error
+than `randn` at biased sites, are indistinguishable at centred ones, and change no
+verdict. The roadmap's "validates on synthetic, ships on real" hypothesis holds at
+the ~3× level, not the orders-of-magnitude level the framing invites.
+
+**The outline's estimate was wrong in a useful direction.** It budgets "4–6 days,
+mostly compute." The harness is launch-overhead bound by design; the full cross
+product runs in **7 seconds**. The days are analysis.
+
+**Deviation recorded:** the roadmap says *"No rental, no clock"* and `$0`. The A10 was
+rented — a defensible trade for native bf16, but a deviation.
 
 ---
 
-## Phase 5 — Seeded-input experiment ⬜ not started
+## Phase 5 — Seeded-input experiment ✅
 
-Unaffected by the open decisions; the roadmap calls it the sharper half of the
-paper. Phase 4 asks whether the gap exists, Phase 5 asks whether the sampling
-method everyone uses would find it.
+**Exit criterion:** *a catch-rate comparison — uniform vs seeded — per
+transformation.* **Met** — `results/seeded_catch_rates.json`, 100 trials × 6 pairs ×
+5 strategies.
+
+Seeded inputs trip the gate on 4 of 6 pairs at 100%, at 1600–2100× tolerance. **But
+stress-testing showed the seeds are not realistic.** The `cancellation` strategy's
+median row condition number is 4.5e6 against real rows' 42.8 — **+10.4σ** on a log
+scale, ~600× worse than the *worst* real row. Bounding values inside the observed
+range does not make the arrangement realistic, and the arrangement is the mechanism.
+
+The decisive control: **real activations at their worst still pass.** `post_ln_L5`
+reaches row condition number **368,927** — zero-mean by construction, so `Σx ≈ 0` —
+and its differential is 7.77e-06 against a 1e-4 gate. Condition rose 400× over
+uniform; the differential rose 11×.
+
+So Phase 5 shows these transformations **can** diverge, not that they **do**. What
+survives is `matmul_k_tiling` at 14% under plain uniform sampling — and the
+explanation for it became the project's headline. See the Verdict in
+[`CLAIM.md`](CLAIM.md).
 
 ---
 
@@ -288,9 +317,17 @@ method everyone uses would find it.
 |---|---|
 | Phase 1 stalls — corpus cannot be constructed | **did not fire.** All six built, all exactly equivalent over ℝ |
 | Phase 2's fp16 simulation doesn't track native | **retired.** A10 is Ampere; bf16 is native and nothing is simulated |
-| Phase 4 shows error 3+ orders inside tolerance everywhere | **unknown — not yet measured** |
+| Phase 4 shows error 3+ orders inside tolerance everywhere | **did not fire, narrowly** |
 
-On the third: an fp32 sanity check was run during Phase 1 to confirm no corpus pair
+On the third: it came close. At fp32 the differentials sit **1–2 orders** inside the
+gate, not 3+, and one pair (`matmul_k_tiling`) crosses it on 14% of draws. So A1 does
+not win decisively and the short-paper exit was not taken — but it was nearer than the
+Phase 5 headline suggested before that headline was stress-tested.
+
+The Phase 1 note kept below for the record, since it was written before any result and
+should not be re-read as one:
+
+> an fp32 sanity check was run during Phase 1 to confirm no corpus pair
 is degenerate. All 18 cells diverge, and the fraction of elements over `1e-4`
 relative peaked at **0.20%**, under T1's 1% bar. **This is not a result and must not
 be cited as one.** It is `randn` input, fp32 only, no seeding, no realistic
@@ -305,13 +342,26 @@ denominators discussed above. Phases 3–5 are what actually test C1.
 1. ~~**Hardware**~~ — **resolved.** Lambda A10, us-east-1. Native bf16 was the
    deciding factor and it held up. The secondary argument I made for it — a
    switchable accumulation-width axis — did not; see Phase 2.
-2. **Amend the roadmap's `$0 / no rental, no clock` line**, or record the deviation.
-   Still open. The A10 is rented; the roadmap says it would not be.
-3. **Differential vs absolute reporting** — see the open question above. Needs
-   settling before Phase 4 is designed, because it determines what the headline
-   table's columns are. It does *not* move any registered threshold.
-4. **Threats-to-validity list** — revise before Phase 6. Two entries are now gone
-   rather than replaced, which leaves the section thinner than the roadmap assumed
-   and means it needs new entries, not edits to old ones.
-5. **Phase 3 prerequisite** — the TransformerOp checkpoint still has to be trained
-   before any realistic-activation work can start. Now the critical path.
+2. ~~**Differential vs absolute reporting**~~ — **resolved.** Dated `CLAIM.md`
+   amendment: gate is the differential, as-registered form co-reported on every cell.
+3. ~~**Phase 3 prerequisite**~~ — **resolved.** Checkpoint trained on the A10, val
+   loss 1.5034; fixtures committed.
+4. **Deviation to record:** the roadmap says `$0 / no rental, no clock`. The A10 was
+   rented. Noted in Phase 4 rather than amended into the roadmap, which is left as the
+   historical plan.
+5. **Threats-to-validity list** — still open, and now needs *more* rewriting than
+   before. Two entries vanished (simulated bf16; CPU-vs-tensor-core accumulation, both
+   measured false) and the ones that replace them are different in kind: seeded
+   arrangements +10.4σ from real, one small char-level model, torch reimplementations
+   rather than the actual systems, and no evidence about end-model quality.
+
+### Remaining work
+
+Only Phase 6. The measurement is done and the verdict is written
+([`CLAIM.md`](CLAIM.md)); what is left is prose.
+
+The one experiment that would most strengthen the result, not attempted here: measure
+how often real workloads reach adverse arrangements. This project showed the seeded
+inputs are +10.4σ from the observed distribution but never established the frequency
+with which production traffic approaches them. That is the question a reviewer will
+press hardest, and it is answerable.

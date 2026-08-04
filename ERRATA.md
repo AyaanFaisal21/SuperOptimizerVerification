@@ -14,6 +14,13 @@ tolerance measured against the wrong reference still produces a clean table. Lou
 failures — crashes, timeouts, syntax errors — cost minutes. The silent ones in §1
 would have cost the entire result and left no trace.
 
+**And the pattern held all the way through.** Every claim in this project that moved
+under scrutiny moved the *same direction* — away from the thesis. Nothing supporting
+the null hypothesis ever shrank when pressed. Two of the largest corrections came only
+after someone asked me to verify a result, not from any internal check. That is what
+confirmation bias looks like from the inside, and it is the strongest available
+evidence that the surviving claims were tested rather than merely confirmed.
+
 ---
 
 ## 1. Silent corruption — would have produced clean, wrong numbers
@@ -158,6 +165,8 @@ Recorded because they were stated to a human before being checked.
 | `matmul_k_tiling`'s `d/floor` orders by K | **false** | attention (K=512) reads 4.01 against mlp (K=768) at 3.48. **Still unexplained** — output width and the max normaliser are confounded with K in the current shapes |
 | Gate disagreements would appear at `layernorm_variance` | **false** | All three are `softmax_online`/fp16. The majority-agreement half was right (51/54) |
 | Post-GELU activations would supply badly-conditioned LayerNorm inputs | **weakened** | Post-GELU row max cancellation is 0.36, but in a pre-norm transformer LayerNorm consumes the *residual stream*, whose row max is 0.0158 |
+| Phase 5's seeded inputs are "adversarial but realistic" | **false** | `cancellation`'s median row condition number is 4.5e6 against real rows' 42.8 — **+10.4σ** on a log scale, ~600× worse than the *worst* real row. Bounding values inside the observed range does not make the arrangement realistic, and the arrangement is the entire mechanism |
+| "C1 survives at fp32; uniform sampling is a null test" | **overstated** | Real activations at their worst — `post_ln_L5`, row condition 368,927 — still pass with 10× headroom. Phase 5 shows these transformations *can* diverge, not that they *do* |
 
 The first two were predicted-against-myself in `NOTEBOOK.md` *before* the run that
 falsified them, which is the only reason they are corrections rather than silent

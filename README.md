@@ -26,7 +26,7 @@ correctness concern rather than a precision footnote.
 | [`ROADMAP.md`](ROADMAP.md) | Phases, exit criteria, and kill criteria |
 | [`PROGRESS.md`](PROGRESS.md) | Where the work stands against those phases, and where the outline turned out wrong |
 | [`NOTEBOOK.md`](NOTEBOOK.md) | Dated entries — prediction before each run, outcome after |
-| [`ERRATA.md`](ERRATA.md) | Every error and falsified claim, by failure mode — including four that would have produced clean wrong numbers |
+| [`ERRATA.md`](ERRATA.md) | Every error, retraction and falsified claim, by failure mode — including five that would have produced clean wrong numbers |
 | [`papers/README.md`](papers/README.md) | The six-paper working set and what to read in each |
 
 ## The corpus
@@ -68,26 +68,44 @@ python tools/run_sweep_activations.py     # real activations + matched controls
 python tools/run_seeded.py                # phase 5 catch rates
 ```
 
-**First results, on synthetic inputs only.** At **fp32 all 18 cells pass** the gate
-with roughly two orders of headroom and nothing trips T1 — A1 holds cleanly under
-the conditions least likely to break it. At **fp16/bf16 all 36 fail**, but two-thirds
-of the corpus sits at `d/floor ≈ 1`, meaning the differential merely tracks what the
-precision itself costs. That is a fact about the tolerance, not about the
-transformations.
+## Result
 
-Two results worth reading. Three cells where the gate definitions disagree —
-`softmax_online` at fp16 — **fail against the baseline, pass against float64 truth**:
-the transformation is 15× closer to truth than the reference it is checked against,
-and the methodology rejects it for differing rather than for being wrong. And
-`matmul_k_tiling` fails **14% of the time under plain uniform sampling** at fp32,
-which a single-draw validation misses five times in six.
+**Neither C1 nor A1.** The full verdict is in [`CLAIM.md`](CLAIM.md); the headline:
 
-**A1 largely holds; C1 is not established.** Real activations pass everywhere with
-~10× headroom, including the zero-mean-by-construction post-LayerNorm tensor at row
-condition number 368,927. Seeded inputs do break the transformations at 1600×
-tolerance, but sit +10.4σ outside the real distribution. Full accounting is in
-[`PROGRESS.md`](PROGRESS.md); every error, retraction and falsified claim is in
-[`ERRATA.md`](ERRATA.md).
+**`atol = 1e-4` is an absolute constant applied to tensors of arbitrary magnitude, so
+whether a *correct* transformation passes depends on output scale rather than on its
+soundness.** Same code, unchanged:
+
+| K | abs err | |
+|---|---|---|
+| 128 | 1.34e-05 | pass |
+| 512 | 7.63e-05 | pass (0.8× atol) |
+| **2048** | **2.37e-04** | **fail** |
+
+Across all six pairs the **relative** errors span a factor of 3 (3.3e-07 – 1.0e-06).
+The **absolute** errors span four orders of magnitude, entirely because output
+magnitudes do. Matmul outputs grow as σ²√K; row-reductions as σ√n. Production LLMs
+run K = 4096–16384. A relative-only gate, or an `atol` scaled to output magnitude,
+would make the check measure the transformation.
+
+Supporting results:
+
+- **Single-sample validation misses real failures.** `matmul_k_tiling` fails **14% of
+  uniform draws** at fp32 — and this project's own single-draw sweep missed it.
+- **The gate can reject a *more accurate* kernel.** Online softmax at fp16 is **15×
+  closer to float64 truth** than the reference it is checked against, and fails —
+  visible only because both gate definitions are reported.
+- **Real activations are benign.** Every real site passes with ~10× headroom,
+  including post-LayerNorm at row condition number **368,927**, 400× more
+  ill-conditioned than uniform sampling produces.
+- **At fp16/bf16 the failures are about precision, not transformations** — `d/floor ≈ 1`
+  for two-thirds of the corpus.
+
+Two claims were **retracted** during the work, both recorded rather than removed: a
+"100× tolerance gap" that rested on a category error, and "C1 survives at fp32," whose
+seeded inputs sit **+10.4σ** outside the real distribution. Every error and falsified
+claim is in [`ERRATA.md`](ERRATA.md); phase-by-phase status in
+[`PROGRESS.md`](PROGRESS.md).
 
 ## License
 
