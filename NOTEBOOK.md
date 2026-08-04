@@ -321,6 +321,81 @@ the one-pass form is not the weaker variant — `E[x²] − μ²` has no cancell
 μ ≈ 0. Its instability needs biased inputs, which is what the activation fixtures
 and Phase 5 are for.
 
+## 2026-08-03 — Phase 5 stress-tested: the seeds are 10σ out, and A1 mostly holds
+
+**Setup.** Asked how trustworthy the Phase 5 result is. Rather than argue it, measure
+it: how far outside the real activation distribution do the seeded inputs actually
+sit? The relevant statistic for reassociation is the **summation condition number**
+`Σ|xᵢ| / |Σxᵢ|`, and for the one-pass variance it is `μ²/E[x²]`. Both are computable
+on the Phase 3 fixtures.
+
+**Outcome — real rows vs seeded rows:**
+
+| source | cond p50 | cond p99 | cond max | cancel max |
+|---|---|---|---|---|
+| `resid_pre_ln_L5` (real) | 42.8 | 1,188 | 7,237 | 0.008 |
+| `post_ln_L5` (real) | 678.7 | 81,247 | **368,927** | 0.000 |
+| `attn_scores` (real) | 6.0 | 269 | 2,810 | 0.361 |
+| `uniform` (control) | 24.1 | 743 | 954 | 0.031 |
+| **`cancellation` (seed)** | **4.5e6** | 4.6e10 | **5.0e13** | 0.000 |
+| **`shifted` (seed)** | 1.0 | 1.0 | 1.0 | **1.000** |
+
+**`cancellation` sits +10.4σ from the real distribution on a log scale.** Its median
+row is ~600× worse-conditioned than the *worst* real row and ~100,000× worse than the
+median. My "seed the arrangement, not the magnitudes" defence does not survive
+contact with this: the arrangement is the entire mechanism, and it is nowhere near
+anything the model produces. `shifted` drives `μ²/E[x²]` to 1.000 where the most
+biased real tensor reaches 0.361.
+
+**Then the decisive test — real activations, unmodified, no seeding, at fp32:**
+
+| pair | real site | cond max | differential | gate |
+|---|---|---|---|---|
+| `split_reduction` | `post_ln_L5` | 368,927 | 7.77e-06 | **pass** |
+| `reassociation` | `post_ln_L5` | 368,927 | 8.58e-06 | **pass** |
+| `layernorm_variance` | `post_gelu_L5` | cancel 0.36 | 8.74e-07 | **pass** |
+
+**Everything passes, with an order of magnitude to spare.** Condition number rose
+**400×** from uniform (954 → 368,927) and the differential rose only **~11×**
+(7.19e-07 → 7.77e-06). The transformations are far more robust to real
+ill-conditioning than the seeded result suggested.
+
+I had also mislabelled `post_ln` as a well-conditioned "control" in the activation
+arm. For *summation*, it is the opposite: LayerNorm output is zero-mean by
+construction, so `Σx ≈ 0` and the condition number explodes. It is the worst real
+case, not the control — and it still passes.
+
+**Read. The previous entry's headline is too strong and is corrected here.**
+
+What I claimed: *C1 survives at fp32; uniform sampling is a null test.*
+
+What is actually supported:
+
+1. **A1 largely holds at fp32 for realistic inputs.** Every real activation site —
+   including the pathologically-conditioned-by-construction post-LayerNorm tensor —
+   passes with 10× headroom. The roadmap's third kill criterion is closer to firing
+   than C1 is to being established.
+2. **The seeded failures are real but require ~10σ arrangements.** They demonstrate
+   that these transformations *can* diverge by 1600×, not that they *do*. A numerical
+   analyst would predict divergence at condition number 1e6 without measuring; the
+   contribution is not the divergence, it is that the real distribution never gets
+   there.
+3. **One genuine exception survives intact: `matmul_k_tiling` fails 14% under plain
+   uniform sampling at fp32**, and Phase 4's single draw missed it. That is a real
+   failure at realistic inputs, found by the catch-rate design, and it is now the
+   strongest C1-supporting result in the project.
+4. **The conditioning measurement is itself a contribution, as an informative null.**
+   Real post-LayerNorm activations are 400× more ill-conditioned for summation than
+   uniform sampling produces — and the transformations absorb it. That is worth
+   reporting precisely because it is the opposite of what the framing predicted.
+
+**Method note.** This is the third time a result has moved after being stress-tested,
+and all three moved the same direction — away from the thesis. The pattern is now
+established enough to state as a finding about the project itself: every number that
+supported C1 shrank under scrutiny, and none that supported A1 did.
+
+---
+
 ## 2026-08-03 — RETRACTION of the "100× gap" claim below
 
 **The entry immediately following this one is wrong in its central claim, and the

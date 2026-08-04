@@ -73,16 +73,18 @@ of the corpus sits at `d/floor ≈ 1`, meaning the differential merely tracks wh
 precision itself costs. That is a fact about the tolerance, not about the
 transformations.
 
-The result worth reading: three cells where the two gate definitions disagree —
-`softmax_online` at fp16 — read **fail against the baseline, pass against float64
-truth.** The transformation is 15× closer to truth than the reference it is checked
-against, and the field's methodology rejects it for differing rather than for being
-wrong.
+Two results worth reading. Three cells where the gate definitions disagree —
+`softmax_online` at fp16 — **fail against the baseline, pass against float64 truth**:
+the transformation is 15× closer to truth than the reference it is checked against,
+and the methodology rejects it for differing rather than for being wrong. And
+`matmul_k_tiling` fails **14% of the time under plain uniform sampling** at fp32,
+which a single-draw validation misses five times in six.
 
-**Nothing is settled.** The activation arm of Phase 4 and all of Phase 5 (seeded
-inputs) remain, and at fp32 those are the only route by which C1 could survive.
-Full accounting — including three roadmap premises that turned out false — is in
-[`PROGRESS.md`](PROGRESS.md); every error and falsified claim is in
+**A1 largely holds; C1 is not established.** Real activations pass everywhere with
+~10× headroom, including the zero-mean-by-construction post-LayerNorm tensor at row
+condition number 368,927. Seeded inputs do break the transformations at 1600×
+tolerance, but sit +10.4σ outside the real distribution. Full accounting is in
+[`PROGRESS.md`](PROGRESS.md); every error, retraction and falsified claim is in
 [`ERRATA.md`](ERRATA.md).
 
 ## License

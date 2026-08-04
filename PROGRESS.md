@@ -20,12 +20,17 @@ a finding rather than quietly absorbed.
 **Five of six phases complete**, well ahead of the outline's calendar. Only the
 writeup remains.
 
-**C1 survives at fp32.** Adversarial-but-realistic seeding — every value bounded
-inside the observed real activation range — trips the gate on 4 of 6 pairs at a
-**100% catch rate**, at magnitudes **1600–2100× the tolerance**, where the uniform
-sampling the field actually runs finds nothing at all. Uniform is not a weak test of
-these transformations; it is a null test. The conditional that keeps this honest: we
-showed the *values* are realistic, not that the *arrangements* occur.
+**A1 largely holds at fp32; C1 is not established.** Every real activation site
+passes with ~10× headroom — including `post_ln`, which is zero-mean by construction
+and reaches row condition number **368,927**, 400× what uniform sampling produces.
+Seeded inputs do trip the gate at 1600–2100× tolerance, but those arrangements sit
+**+10.4σ** outside the real distribution, so they show these transformations *can*
+diverge, not that they *do*.
+
+**The one C1-supporting result that survived stress-testing:** `matmul_k_tiling`
+fails the gate **14% of the time under plain uniform sampling** at fp32 — and Phase
+4's single draw missed it. Single-sample validation misses a real failure five times
+in six.
 
 Errors and falsified claims are collected by failure mode in
 [`ERRATA.md`](ERRATA.md), including four that would have produced clean wrong
