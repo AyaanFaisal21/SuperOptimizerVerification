@@ -26,6 +26,7 @@ correctness concern rather than a precision footnote.
 | [`ROADMAP.md`](ROADMAP.md) | Phases, exit criteria, and kill criteria |
 | [`PROGRESS.md`](PROGRESS.md) | Where the work stands against those phases, and where the outline turned out wrong |
 | [`NOTEBOOK.md`](NOTEBOOK.md) | Dated entries — prediction before each run, outcome after |
+| [`ERRATA.md`](ERRATA.md) | Every error and falsified claim, by failure mode — including four that would have produced clean wrong numbers |
 | [`papers/README.md`](papers/README.md) | The six-paper working set and what to read in each |
 
 ## The corpus

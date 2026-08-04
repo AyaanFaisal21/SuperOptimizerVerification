@@ -11,7 +11,9 @@ venv/
 
 # Raw per-cell results are committed — they are the artifact. The large
 # intermediate tensors that produce them are not.
-fixtures/*.pt
+# the activation fixture IS the artifact (ROADMAP phase 3: "committed, with a
+# script that regenerates it"), so it is tracked despite being binary.
+!fixtures/activations.pt
 fixtures/*.npz
 results/**/*.npy
 *.egg-info/
