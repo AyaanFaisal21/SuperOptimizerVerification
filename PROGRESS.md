@@ -17,14 +17,22 @@ a finding rather than quietly absorbed.
 | 5 — Seeded-input experiment | 3–4 days | not started | no |
 | 6 — Writeup | 5–7 days | Background only | no |
 
-Two of six phases complete, roughly on the outline's calendar. Phase 3 is gated on a
-prerequisite the outline did not anticipate; Phases 4–6 follow from it.
+Three of six phases complete, roughly on the outline's calendar, plus the synthetic
+arm of Phase 4. Phase 3 is gated on a prerequisite the outline did not anticipate —
+the checkpoint is training now — and the remaining arms of Phases 4–5 follow from it.
+
+**No claim is settled.** At fp32 on synthetic inputs A1 holds cleanly; that is one
+cell class of the eventual design, under the conditions least likely to break it.
 
 ---
 
-## Open question that may reframe C1
+## The question that reframed C1 — resolved into the design
 
-Not a phase item, and it needs a decision before Phase 4 is designed.
+**Settled 2026-08-03** by a dated `CLAIM.md` amendment: the gate is now the
+differential (variant vs baseline at the same precision, which is what Axon §4.6
+literally specifies), the as-registered form is co-reported on every cell, and the
+precision floor is recorded alongside. No registered threshold moved. The reasoning
+that got there is kept below because it is the argument the writeup has to make.
 
 Measured on the A10 and reproduced bit-identically on the Mac: **at fp16 and bf16,
 an untransformed matmul already exceeds the `1e-4` gate** — 3.95e-04 and 3.10e-03
@@ -105,11 +113,19 @@ pushed the sweep toward A1 — the direction least likely to be interrogated.
 
 ---
 
-## Phase 2 — Reference and precision harness ◐ in progress
+## Phase 2 — Reference and precision harness ✅
 
 **Exit criterion:** *the harness takes (transformation, shape, precision, input
-tensor) and returns per-element relative error against float64 truth.* **Not met** —
-the harness itself is not written. Hardware and machine characterisation are done.
+tensor) and returns per-element relative error against float64 truth.* **Met** —
+[`fpgap/harness.py`](fpgap/harness.py). It returns more than the criterion asks for:
+three quantities per cell (floor / total / differential), both gate definitions, and
+both T1 readings. `inputs` is overridable, which is the hook Phase 3 fixtures and
+Phase 5 seeding plug into.
+
+**float64-as-truth is now checked, not assumed.**
+[`tools/validate_reference.py`](tools/validate_reference.py) recomputes every corpus
+baseline against mpmath at 50 digits: worst drift **8.2e-16, 4× float64 eps**, twelve
+orders below the 1e-4 gate. That was the outline's remaining Phase 2 item.
 
 **Hardware settled: Lambda `gpu_1x_a10`, us-east-1.** Verified NVIDIA A10, compute
 capability 8.6 (Ampere), 23 GB, driver 580.105.08, CUDA 12.8, Python 3.10.12, torch
@@ -134,8 +150,7 @@ equivalence over ℝ is not a platform-specific accident.
   identical to every printed digit, because rounding the output to the narrow type
   dominates. Only fp32 shows a real platform gap (CPU 3× worse).
 
-**Still outstanding:** the harness itself, and the mpmath 50-digit cross-check
-confirming float64 is adequate as truth (`mpmath 1.3.0` available).
+**Still outstanding:** nothing in Phase 2.
 
 **The outline's premise here is already known to be wrong.** It says *"bf16 is not
 native on your card — simulate by rounding through `torch.bfloat16` and computing
