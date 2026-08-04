@@ -57,13 +57,15 @@ torch's internals invisibly.
 
 ## Status
 
-**Phases 0–3 of 6 complete**, plus the synthetic arm of Phase 4. Measured on an
-NVIDIA A10 (Ampere, native bf16) and an M3 Pro.
+**Phases 0–5 of 6 complete**; only the writeup remains. Measured on an NVIDIA A10
+(Ampere, native bf16) and an M3 Pro.
 
 ```bash
 python -m pytest tests/ -q                # phase 1: equivalence over ℝ
 python tools/validate_reference.py        # float64 vs mpmath at 50 digits
 python tools/run_sweep.py                 # 54-cell synthetic sweep
+python tools/run_sweep_activations.py     # real activations + matched controls
+python tools/run_seeded.py                # phase 5 catch rates
 ```
 
 **First results, on synthetic inputs only.** At **fp32 all 18 cells pass** the gate
