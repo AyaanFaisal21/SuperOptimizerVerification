@@ -57,23 +57,33 @@ torch's internals invisibly.
 
 ## Status
 
-**Phases 0–1 of 6 complete.** Claim registered before any code; corpus built and
-both exit criteria met — all 18 cells (6 pairs × 3 shape classes) agree to 1e-15 in
-float64, and a negative control confirms the accumulation orders genuinely diverge
-in fp32, so a null result later would mean something.
+**Phases 0–3 of 6 complete**, plus the synthetic arm of Phase 4. Measured on an
+NVIDIA A10 (Ampere, native bf16) and an M3 Pro.
 
 ```bash
-python -m pytest tests/ -q
+python -m pytest tests/ -q                # phase 1: equivalence over ℝ
+python tools/validate_reference.py        # float64 vs mpmath at 50 digits
+python tools/run_sweep.py                 # 54-cell synthetic sweep
 ```
 
-**No measurement has been made yet.** Nothing in this repo currently bears on
-whether C1 or A1 is true.
+**First results, on synthetic inputs only.** At **fp32 all 18 cells pass** the gate
+with roughly two orders of headroom and nothing trips T1 — A1 holds cleanly under
+the conditions least likely to break it. At **fp16/bf16 all 36 fail**, but two-thirds
+of the corpus sits at `d/floor ≈ 1`, meaning the differential merely tracks what the
+precision itself costs. That is a fact about the tolerance, not about the
+transformations.
 
-Phase 2 is blocked on one decision — which hardware — because it determines whether
-bf16 is measured or simulated. Phase 3 is blocked on a prerequisite the outline did
-not anticipate: there is no trained TransformerOp checkpoint to draw activations
-from. Full accounting, including three places the roadmap's own premises turned out
-to be wrong, is in [`PROGRESS.md`](PROGRESS.md).
+The result worth reading: three cells where the two gate definitions disagree —
+`softmax_online` at fp16 — read **fail against the baseline, pass against float64
+truth.** The transformation is 15× closer to truth than the reference it is checked
+against, and the field's methodology rejects it for differing rather than for being
+wrong.
+
+**Nothing is settled.** The activation arm of Phase 4 and all of Phase 5 (seeded
+inputs) remain, and at fp32 those are the only route by which C1 could survive.
+Full accounting — including three roadmap premises that turned out false — is in
+[`PROGRESS.md`](PROGRESS.md); every error and falsified claim is in
+[`ERRATA.md`](ERRATA.md).
 
 ## License
 

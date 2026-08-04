@@ -12,17 +12,22 @@ a finding rather than quietly absorbed.
 | 0 — Setup | ½ day | **complete** | yes — claim committed dated, `f9adefc` |
 | 1 — Transformation corpus | 3–5 days | **complete** | yes — 6 pairs, 18/18 cells inside 1e-12 |
 | 2 — Reference & precision harness | 3–4 days | **complete** | yes — harness built, float64 validated vs mpmath |
-| 3 — Realistic inputs | 2–3 days | **blocked** | no — prerequisite missing, see below |
+| 3 — Realistic inputs | 2–3 days | **complete** | yes — fixture + regeneration script committed |
 | 4 — Main sweep | 4–6 days | **synthetic arm done** | partial — 54 `randn` cells on disk; activation arm pending |
 | 5 — Seeded-input experiment | 3–4 days | not started | no |
 | 6 — Writeup | 5–7 days | Background only | no |
 
-Three of six phases complete, roughly on the outline's calendar, plus the synthetic
-arm of Phase 4. Phase 3 is gated on a prerequisite the outline did not anticipate —
-the checkpoint is training now — and the remaining arms of Phases 4–5 follow from it.
+Four of six phases complete, ahead of the outline's calendar, plus the synthetic arm
+of Phase 4. What remains: the activation arm of Phase 4, all of Phase 5, and the
+writeup.
 
-**No claim is settled.** At fp32 on synthetic inputs A1 holds cleanly; that is one
-cell class of the eventual design, under the conditions least likely to break it.
+**No claim is settled.** At fp32 on synthetic inputs A1 holds cleanly — but that is
+one cell class under the conditions least likely to break it, and at fp32 the seeded
+inputs of Phase 5 are the only remaining route by which C1 could survive.
+
+Errors and falsified claims are collected by failure mode in
+[`ERRATA.md`](ERRATA.md), including four that would have produced clean wrong
+numbers.
 
 ---
 
@@ -189,20 +194,42 @@ confirming float64 is itself adequate as truth. `mpmath 1.3.0` is available.
 
 ---
 
-## Phase 3 — Realistic inputs ⛔ blocked on a missing prerequisite
+## Phase 3 — Realistic inputs ✅
 
 **Exit criterion:** *a fixture file of real activation tensors, committed, with a
-script that regenerates it.* Not started.
+script that regenerates it.* **Met** — `fixtures/activations.pt` (11.5 MB, tracked
+deliberately) plus [`tools/dump_activations.py`](tools/dump_activations.py).
 
-**The outline assumes a checkpoint that does not exist.** It says "dump real
-activations from your TransformerOp checkpoint." There is no checkpoint and no
-downloaded data — `TransformerOp/train.py` writes to `checkpoints/{model}.pt`, and
-`TransformerOp/data/` contains only `get_data.py`.
+**The outline assumed a checkpoint that did not exist.** It says to dump activations
+from the TransformerOp checkpoint; there was none, and no downloaded data. So Phase 3
+had an unbudgeted training step in front of it: `get_data.py` → `train.py` → dump.
+Trained on the A10 — 5000 iters, tiny-shakespeare, val loss **1.5034**, ~8 minutes.
+Not optional, since T2 is pre-registered.
 
-Phase 3 therefore has a training step in front of it: `get_data.py` → `train.py` →
-dump activations. Feasible locally on the M3, but it is real work the outline did
-not budget. Not optional either — T2 is pre-registered: *"realistic inputs means
-activations sampled from a trained model, not `torch.randn`."*
+**Nine sites captured** at blocks 0 and 5, 512 rows each: residual stream entering
+LayerNorm, LayerNorm output, post-GELU, MLP output, and attention scores.
+
+**Per-row cancellation is the number that matters**, since LayerNorm reduces per row.
+`μ²/E[x²] → 1` is catastrophic for the one-pass variance form:
+
+| site | row mean | row p99 | row max |
+|---|---|---|---|
+| `resid_pre_ln_L0` — *what LayerNorm actually consumes* | 0.0020 | 0.0117 | **0.0158** |
+| `resid_pre_ln_L5` | 0.0007 | 0.0056 | 0.0077 |
+| `post_gelu_L5` | 0.0654 | 0.2683 | **0.3602** |
+| `attn_scores` | 0.0466 | 0.2989 | **0.3608** |
+| `post_ln_*` (control) | 0.0000 | 0.0000 | 0.0000 |
+
+**Against my own prediction.** I expected post-GELU to supply the badly-conditioned
+LayerNorm inputs that `randn` cannot. It is indeed the most biased site (row max
+0.36) — but **in a pre-norm transformer LayerNorm never sees it.** What LayerNorm
+consumes is the residual stream, whose row max is 0.0158. So on real activations the
+one-pass variance form looks well conditioned, and that is a fact about pre-norm
+architecture rather than about `randn` being zero-mean. It cuts toward A1, and it is
+a stronger version of that result than the synthetic one.
+
+Caveat: one small char-level model. A post-norm architecture, or LayerNorm applied
+to something other than a residual stream, could differ.
 
 ---
 
