@@ -1,0 +1,168 @@
+{
+  "precision": "fp32",
+  "trials": 100,
+  "results": {
+    "split_reduction": {
+      "uniform": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.08,
+        "worst_differential": 1.476623603828307e-06
+      },
+      "wide_range": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.14,
+        "worst_differential": 1.9605273949394215e-06
+      },
+      "cancellation": {
+        "gate_fail_rate": 1.0,
+        "t1_fail_rate": 1.0,
+        "worst_differential": 0.1620775969962453
+      },
+      "dynamic_mix": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 2.873662025438251e-06
+      },
+      "shifted": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.5646986111064542e-06
+      }
+    },
+    "reassociation": {
+      "uniform": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.07,
+        "worst_differential": 1.476623603828307e-06
+      },
+      "wide_range": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.13,
+        "worst_differential": 1.8516092063316758e-06
+      },
+      "cancellation": {
+        "gate_fail_rate": 1.0,
+        "t1_fail_rate": 1.0,
+        "worst_differential": 0.1460575719649562
+      },
+      "dynamic_mix": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 2.9727538194188803e-06
+      },
+      "shifted": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.564671330728379e-06
+      }
+    },
+    "layernorm_variance": {
+      "uniform": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 9.710064930457263e-07
+      },
+      "wide_range": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 2.783003412371449e-06
+      },
+      "cancellation": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 2.7762517647244343e-07
+      },
+      "dynamic_mix": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 5.687496702041843e-06
+      },
+      "shifted": {
+        "gate_fail_rate": 1.0,
+        "t1_fail_rate": 1.0,
+        "worst_differential": 0.2090213362183637
+      }
+    },
+    "softmax_online": {
+      "uniform": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 2.922944603623136e-06
+      },
+      "wide_range": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 7.34039810053083e-06
+      },
+      "cancellation": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.643250911747498e-06
+      },
+      "dynamic_mix": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 3.5762791128491298e-06
+      },
+      "shifted": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.8390667529931052e-06
+      }
+    },
+    "scalar_past_matmul": {
+      "uniform": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.67405202618887e-06
+      },
+      "wide_range": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.2403004425457259e-06
+      },
+      "cancellation": {
+        "gate_fail_rate": 0.28,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 2.564362945570884e-06
+      },
+      "dynamic_mix": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 3.2750556671738713e-06
+      },
+      "shifted": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 2.3706214806457277e-06
+      }
+    },
+    "matmul_k_tiling": {
+      "uniform": {
+        "gate_fail_rate": 0.14,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.103202818422444e-06
+      },
+      "wide_range": {
+        "gate_fail_rate": 0.31,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 9.949996293626381e-07
+      },
+      "cancellation": {
+        "gate_fail_rate": 1.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.9276645029199582e-06
+      },
+      "dynamic_mix": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.9023473808729391e-06
+      },
+      "shifted": {
+        "gate_fail_rate": 0.0,
+        "t1_fail_rate": 0.0,
+        "worst_differential": 1.676359517091114e-06
+      }
+    }
+  }
+}

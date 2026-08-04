@@ -431,7 +431,71 @@ decisively, the roadmap's third kill criterion fires, and this is a shorter pape
 that says the field's shortcut is empirically justified. That outcome is stated here
 in advance so it cannot be reframed later as a disappointment.
 
-**Outcome.** — pending, next entry.
+**Outcome.** 100 trials × 6 pairs × 5 strategies at fp32, 23 s.
+
+**Catch rate — fraction of trials where the Axon gate fails:**
+
+| pair | uniform | wide_range | cancellation | dynamic_mix | shifted |
+|---|---|---|---|---|---|
+| `split_reduction` | 0% | 0% | **100%** | 0% | 0% |
+| `reassociation` | 0% | 0% | **100%** | 0% | 0% |
+| `layernorm_variance` | 0% | 0% | 0% | 0% | **100%** |
+| `softmax_online` | 0% | 0% | 0% | 0% | 0% |
+| `scalar_past_matmul` | 0% | 0% | **28%** | 0% | 0% |
+| `matmul_k_tiling` | **14%** | 31% | **100%** | 0% | 0% |
+
+Worst differential observed: **1.62e-01** (`split_reduction`, cancellation) and
+**2.09e-01** (`layernorm_variance`, shifted) — **1600× and 2100× the gate**, at fp32,
+on inputs bounded inside the real activation range.
+
+| Prediction | Result |
+|---|---|
+| 1. `uniform` catches nothing, 0% everywhere | **almost** — 0% on five pairs, but **14% on `matmul_k_tiling`** |
+| 2. `cancellation` breaks reductions >80% | **correct** — 100% |
+| 3. `shifted` breaks `layernorm_variance` ~100% | **correct** — exactly 100% |
+| 4. `dynamic_mix` 20–60% | **wrong** — 0% everywhere |
+| 5. C1 survives at fp32 | **correct** |
+
+**Prediction 1 was wrong in the most useful way.** `matmul_k_tiling` fails the gate
+**14% of the time under ordinary uniform sampling** at fp32. Phase 4 marked it as
+passing — because Phase 4 drew *one* sample per cell and had an 86% chance of missing
+it. That is not a contradiction between the two experiments; it is precisely the
+phenomenon T3 was written to measure, showing up unprompted. A single-draw validation,
+which is what these systems run, misses a real failure five times in six.
+
+Mechanism: `scale_rel` stays ~1e-6, but the gate is **elementwise**. With output
+magnitudes ~500 at K=512, a 1e-6 relative error is ~5e-4 in absolute terms, which
+clears `atol = 1e-4` on elements whose own magnitude is small. The scale-relative
+summary and the elementwise gate genuinely disagree, and only the gate is what the
+field runs.
+
+**Prediction 4 failed outright.** `dynamic_mix` reads 0% everywhere. The ulp
+reasoning was right but the conclusion was not: one value at ~19 among 1024 at ~1e-4
+leaves the small addends above fp32's stagnation threshold, so no order-dependence
+appears. It should bite at fp16/bf16 and does nothing here.
+
+**`softmax_online` is immune — 0% under every strategy.** The max-subtraction is a
+stabilisation, so both sides are well-conditioned by construction; the `hazard` field
+in the corpus predicted a null here and it held. The irony is worth stating in the
+writeup: **the one transformation Mirage cannot verify** (more than one `exp` on a
+path leaves the Lax fragment) **and Axon conservatively rejects** (uninterpreted
+`exp`) **is the most numerically robust pair in the corpus.** The verification
+machinery is most conservative exactly where it needs to be least.
+
+**Read — this is the C1 result.** What the field samples finds nothing on five of six
+pairs. Adversarial-but-realistic seeding finds failures at 100% on four of them, at
+magnitudes 1600–2100× the gate, at fp32, using only values a trained model produced.
+That is Ruler §6.2 transferred to floating point: uniform sampling is not a weak test
+of these transformations, it is a **null** test of them.
+
+**The limitation a reviewer will press, stated first.** We have shown the *values* are
+realistic — bounded by the observed activation range. We have **not** shown the
+*arrangements* occur. A row engineered so its terms nearly cancel is made of ordinary
+numbers in an extraordinary order, and nothing here establishes that a real model
+emits such rows. So the honest claim is conditional: *if* an input distribution
+reaches these arrangements, the transformations fail by three orders of magnitude and
+uniform sampling will not warn you. Establishing how often real workloads reach them
+is a different experiment, and not one this project has run.
 
 ---
 

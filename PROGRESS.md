@@ -14,15 +14,18 @@ a finding rather than quietly absorbed.
 | 2 — Reference & precision harness | 3–4 days | **complete** | yes — harness built, float64 validated vs mpmath |
 | 3 — Realistic inputs | 2–3 days | **complete** | yes — fixture + regeneration script committed |
 | 4 — Main sweep | 4–6 days | **complete** | yes — 54 synthetic + 24 activation + 16 matched-control cells |
-| 5 — Seeded-input experiment | 3–4 days | not started | no |
+| 5 — Seeded-input experiment | 3–4 days | **complete** | yes — catch rates, uniform vs seeded, per transformation |
 | 6 — Writeup | 5–7 days | Background only | no |
 
-Five of six phases complete, ahead of the outline's calendar. What remains is Phase 5
-(the seeded-input experiment) and the writeup.
+**Five of six phases complete**, well ahead of the outline's calendar. Only the
+writeup remains.
 
-**No claim is settled.** At fp32 on synthetic inputs A1 holds cleanly — but that is
-one cell class under the conditions least likely to break it, and at fp32 the seeded
-inputs of Phase 5 are the only remaining route by which C1 could survive.
+**C1 survives at fp32.** Adversarial-but-realistic seeding — every value bounded
+inside the observed real activation range — trips the gate on 4 of 6 pairs at a
+**100% catch rate**, at magnitudes **1600–2100× the tolerance**, where the uniform
+sampling the field actually runs finds nothing at all. Uniform is not a weak test of
+these transformations; it is a null test. The conditional that keeps this honest: we
+showed the *values* are realistic, not that the *arrangements* occur.
 
 Errors and falsified claims are collected by failure mode in
 [`ERRATA.md`](ERRATA.md), including four that would have produced clean wrong
