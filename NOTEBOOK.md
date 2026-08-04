@@ -321,7 +321,64 @@ the one-pass form is not the weaker variant — `E[x²] − μ²` has no cancell
 μ ≈ 0. Its instability needs biased inputs, which is what the activation fixtures
 and Phase 5 are for.
 
-## 2026-08-03 — what the field's code actually uses: 1e-2, not 1e-4
+## 2026-08-03 — RETRACTION of the "100× gap" claim below
+
+**The entry immediately following this one is wrong in its central claim, and the
+commit that carries it (`3adb846`) overstates the same thing. Both are left in place
+rather than edited, and corrected here.**
+
+The claim was: *the literature states 1e-4, the code shipping reduced-precision
+kernels uses 1e-2, a 100× undocumented gap.* Prompted to verify it properly — it is
+a critique of named people's published work — I checked what I had actually compared.
+Four problems, any one of which sinks it:
+
+1. **Different groups.** Axon is Kothari, Zhu, Kroening, Sung — **AWS / UIUC**.
+   Mirage is Wu, Jia — **CMU**. I compared one group's stated threshold against
+   another group's code and called it a gap. There is no "the literature says X but
+   the code says Y" here; there are two systems.
+2. **Mirage's paper states no float tolerance at all.** Searched directly: the only
+   "threshold" in it is the PIT error probability δ, a finite-field bound. So there
+   was never a 1e-4 in Mirage to contradict.
+3. **Different subsystems.** Every one of the 66 `1e-2` sites is under
+   `tests/runtime_python/` or `demo/` — MoE linear, MLA attention, fp8 linear,
+   warp-specialised matmul, conv. These are **hand-written MPK runtime kernels checked
+   against PyTorch references**. Not one is the superoptimizer validating search
+   output.
+4. **Different artifact.** The repo at HEAD is **MPK** (Mirage Persistent Kernel),
+   latest commit 2026-07-28 — the megakernel successor, not the OSDI '25
+   superoptimizer the paper describes.
+
+**What is actually true, verified:**
+
+- `src/search/verification/` contains `probabilistic_verifier.cc` and
+  `formal_verifier.cc` and **no float tolerance anywhere** in `src`/`include`.
+  Mirage's equivalence check is exact and finite-field, exactly as the paper says.
+  Mirage is *cleaner* than I implied — it does not run a sloppy float check, it runs
+  an exact algebraic one and never claims otherwise.
+- The superoptimizer benchmark scripts (`benchmark/*.py`) call `graph.superoptimize()`,
+  run the result, and time it. **No correctness comparison, and no tolerance anywhere
+  in `benchmark/`.**
+- Axon states `rtol = atol = 1e-4` on FP32. Verified verbatim.
+- Prism states no tolerance, and its benchmarks are entirely half-precision. Verified.
+
+**What survives, stated narrowly.** The three systems' float-validation stories
+differ and none is quantified: Axon states 1e-4 at FP32; Prism states nothing while
+benchmarking at half precision; Mirage's superoptimizer path has no float check at
+all because its verification is exact by construction. The MPK runtime tests landing
+on 1e-2 for bf16 kernels is *corroborating context* — evidence about what
+practitioners accept for bf16 kernels generally, and it does sit right at our
+measured bf16 differential range of 4.55e-03 to 1.10e-02 — but it is a different
+subsystem and cannot be cited as a contradiction of anything.
+
+**What I should have done.** Checked the authorship, the subsystem, and the artifact
+identity *before* asserting a 100× gap about named researchers. The census itself was
+accurate; every inference I drew from it was not. This is the second absence-shaped
+error in the project after the `grep` one, and the lesson is the same: a number that
+supports the thesis deserves more scrutiny than one that doesn't, not less.
+
+---
+
+## 2026-08-03 — [RETRACTED, see above] what the field's code uses
 
 **Setup.** Chasing the loose end under the sharpest claim: does Prism's artifact
 state a validation tolerance? Prism has **no artifact link in the paper** — every

@@ -96,7 +96,43 @@ activations are perfectly conditioned" more strongly than the data warrants.
 **Generalisation.** Match the statistic to the axis the operator reduces over. A
 summary over the wrong axis is not a weaker measurement, it is a different one.
 
-### 1.5 TF32 — caught before it did damage
+### 1.5 The "100× tolerance gap" — asserted publicly, then retracted
+
+**What.** Claimed that the literature states `1e-4` while the code shipping
+reduced-precision kernels uses `1e-2`, an undocumented 100× gap. Committed to a
+public repo (`3adb846`) and stated to a collaborator before being checked.
+
+**Why it is wrong.** Four independent reasons:
+
+- **Different groups.** Axon is AWS/UIUC; Mirage is CMU. One group's stated threshold
+  against another group's code is not a gap.
+- **Mirage's paper states no float tolerance at all** — its only "threshold" is the
+  PIT error probability δ.
+- **Different subsystems.** All 66 `1e-2` sites are `tests/runtime_python/` and
+  `demo/` — hand-written MPK runtime kernels checked against PyTorch. None validates
+  superoptimizer output.
+- **Different artifact.** The repo at HEAD is MPK, the megakernel successor, not the
+  OSDI '25 superoptimizer.
+
+**Cost if unnoticed.** This was a public, specific critique of named researchers,
+built on a category error. It would have been the most prominent claim in the writeup
+and the first thing a reviewer — or the authors — would have dismantled.
+
+**Caught by.** Being asked to verify it *because* it was a critique of real work.
+Not by any internal check.
+
+**What survives.** The census numbers are accurate; every inference drawn from them
+was not. Narrowly: Axon states 1e-4 at FP32, Prism states nothing while benchmarking
+at half precision, and Mirage's superoptimizer path has no float check because its
+verification is exact by construction. MPK's 1e-2 on bf16 kernels is corroborating
+context about what practitioners accept, not a contradiction.
+
+**Generalisation.** A measurement that supports the thesis deserves *more* scrutiny
+than one that doesn't. This is the second absence-shaped error after §1.3, and both
+went the same direction — toward the conclusion I wanted. Before asserting anything
+about someone else's work: check authorship, subsystem, and artifact identity.
+
+### 1.6 TF32 — caught before it did damage
 
 **What.** On Ampere, TF32 carries a 10-bit mantissa. Left enabled for matmul, the fp32
 *baseline* is not fp32.
