@@ -261,6 +261,71 @@ seen: the small and attention shape classes, and how the ratios move with shape.
    Where they disagree, it should be `layernorm_variance`, whose floor is enormous
    at reduced precision while its differential is small.
 
-**Outcome.** — pending, next entry.
+**Outcome.** 54 cells in 7 s (CPU). Raw records in `results/sweep_randn.json`.
+
+| Prediction | Result |
+|---|---|
+| 1. fp32: all 18 pass, no T1 failures | **correct** — 18/18 pass, 0 T1 |
+| 2. fp16/bf16: all 36 fail | **correct** — 36/36 fail, all trip T1 |
+| 3. `d/floor ≈ 1` for reductions, shape-invariant | **correct** — split 0.82–1.10, reassoc 0.94–1.09 |
+| 4. `matmul_k_tiling` `d/floor` orders by K | **FALSIFIED** |
+| 5. gates mostly agree; disagreements at layernorm | **half** — 51/54 agree, but the 3 are softmax |
+
+**Prediction 4 is wrong and I do not have an explanation.** I expected `d/floor` to
+track K, so attention (K=512) should sit below mlp (K=768). Measured: attention
+**4.01** at both fp16 and bf16, against mlp 3.48/2.10 and small (K=256) 2.07/2.08.
+K=512 exceeds K=768. Whatever drives the amplification, it is not K-tile count
+alone — output width (N = 3072 mlp vs 256 attention) and the max-based normaliser
+are both confounded with it here. Recorded as open; it needs a controlled sweep
+over K with M and N pinned, which the current shape classes cannot separate.
+
+**Prediction 5 was half-reasoned.** The majority-agreement part held (51/54). My
+guess at *which* pair would disagree was wrong — I said `layernorm_variance` because
+its floor is enormous at reduced precision. The three disagreements are all
+`softmax_online` at fp16, one per shape class.
+
+**The disagreement cells are the headline result.** All three read
+`axon = FAIL, as-registered = PASS`. The online-softmax variant is close enough to
+float64 truth to pass a 1e-4 gate against *truth*, and fails only when compared
+against the naive baseline — because the baseline is the inaccurate side. At
+mlp/fp16 the variant is **15× closer to truth** than the baseline it is checked
+against (6.03e-04 vs 8.94e-03).
+
+That is the "gate rejects the more accurate kernel" claim, demonstrated in a cell
+where the two gate definitions actually diverge — which is precisely why the
+dual-reporting rule from this morning's amendment was worth adopting. Under the
+as-registered definition alone this result is invisible.
+
+**Scope it honestly.** Softmax outputs have magnitude ~1/N, so `atol = 1e-4` is
+comparable to the output values themselves and the gate is unusually permissive
+*against truth* for this operator. The differential still fails because the
+baseline's own error is large in absolute terms. So the mechanism is partly an
+atol artifact specific to small-magnitude outputs, not purely a statement about
+reordering. The finding stands; the explanation needs that caveat attached.
+
+**`d/floor` splits the corpus into three classes,** which is the metric doing the
+job it was introduced for (mean over fp16+bf16 cells):
+
+| class | pairs | `d/floor` |
+|---|---|---|
+| reordering only | `reassociation` 1.00, `split_reduction` 0.97, `softmax_online` 0.88 | ≈ 1 |
+| genuinely amplifying | `scalar_past_matmul` 1.80, `matmul_k_tiling` 2.96 | > 1 |
+| suppressed | `layernorm_variance` 0.40 | < 1 |
+
+The first class adds nothing beyond what precision costs — the differential just
+tracks the floor, and a gate at 1e-4 fails them for being *different*, not wrong.
+The second genuinely amplifies. The third is the interesting one: at bf16-mlp
+`layernorm_variance` has a floor of 3.55e-01 and a differential of 1.60e-02, so
+both forms are catastrophically wrong and wrong *together*. On zero-mean `randn`
+the one-pass form is not the weaker variant — `E[x²] − μ²` has no cancellation when
+μ ≈ 0. Its instability needs biased inputs, which is what the activation fixtures
+and Phase 5 are for.
+
+**Read.** At fp32 with synthetic inputs, **A1 holds cleanly** — every pair passes
+with ~2 orders of headroom and nothing approaches T1. Whether C1 survives at fp32
+now rests entirely on Phase 5 seeding, exactly as predicted when the gate was
+corrected. At reduced precision the interesting quantity is not the gate at all but
+`d/floor`, because 36/36 failures where two-thirds of the corpus sits at
+`d/floor ≈ 1` is a fact about the tolerance, not about the transformations.
 
 ---

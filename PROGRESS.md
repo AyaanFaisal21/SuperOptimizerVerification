@@ -11,9 +11,9 @@ a finding rather than quietly absorbed.
 |---|---|---|---|
 | 0 — Setup | ½ day | **complete** | yes — claim committed dated, `f9adefc` |
 | 1 — Transformation corpus | 3–5 days | **complete** | yes — 6 pairs, 18/18 cells inside 1e-12 |
-| 2 — Reference & precision harness | 3–4 days | **in progress** | no — hardware settled, harness not built |
+| 2 — Reference & precision harness | 3–4 days | **complete** | yes — harness built, float64 validated vs mpmath |
 | 3 — Realistic inputs | 2–3 days | **blocked** | no — prerequisite missing, see below |
-| 4 — Main sweep | 4–6 days | not started | no |
+| 4 — Main sweep | 4–6 days | **synthetic arm done** | partial — 54 `randn` cells on disk; activation arm pending |
 | 5 — Seeded-input experiment | 3–4 days | not started | no |
 | 6 — Writeup | 5–7 days | Background only | no |
 
