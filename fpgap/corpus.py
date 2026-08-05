@@ -13,9 +13,14 @@ two rules the corpus holds itself to:
     variance identity) the accumulation order is held fixed across both sides, so
     the measured difference is attributable to the algebra and not to a reduction
     order that happened to change with it.
+
+three variants read a knob out of the inputs dict with a default -- io.get("k")
+(split chunk count), io.get("chunk") (online-softmax block), io.get("tile")
+(K-tile width). a sweep can override them by injecting the key; nothing currently
+does, so the defaults are what every committed result used.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable
 
 import torch

@@ -29,7 +29,7 @@ quantisation is excluded and only arithmetic error is measured.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 
 import torch
 from torch import Tensor

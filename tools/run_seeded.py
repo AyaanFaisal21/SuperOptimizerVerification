@@ -22,7 +22,6 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from fpgap.corpus import BY_NAME
 from fpgap.harness import DTYPES, GATE, T1_FRAC, measure
 from fpgap.seeds import STRATEGIES, generate
 
@@ -67,7 +66,8 @@ def main():
           f"gate rtol=atol={GATE:.0e}   T1 = >{GATE:.0e} on >={T1_FRAC:.0%} of elements")
     hdr = f"{'pair':<21}" + "".join(f"{s:>14}" for s in STRATEGIES)
     print("\ncatch rate: fraction of trials where the Axon gate FAILS")
-    print(hdr); print("-" * len(hdr))
+    print(hdr)
+    print("-" * len(hdr))
 
     out = {}
     for name in SHAPES:
@@ -93,7 +93,8 @@ def main():
         print(row)
 
     print("\nworst differential seen (scale-relative), any trial")
-    print(hdr); print("-" * len(hdr))
+    print(hdr)
+    print("-" * len(hdr))
     for name, rec in out.items():
         print(f"{name:<21}" + "".join(f"{rec[s]['worst_differential']:>14.2e}"
                                       for s in STRATEGIES))

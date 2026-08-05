@@ -55,6 +55,28 @@ rather than delegated to `torch.sum` — torch uses a blocked pairwise cascade o
 CPU and a tree reduction on CUDA, and measuring torch against torch would measure
 torch's internals invisibly.
 
+## Code layout
+
+The package is four modules; `tools/` holds the runnable experiments, and every
+tool's docstring carries its own run command.
+
+| path | role |
+|---|---|
+| [`fpgap/accumulate.py`](fpgap/accumulate.py) | order-pinned summation (`seq`/`chunked`/`tree`) — the primitive everything rests on |
+| [`fpgap/corpus.py`](fpgap/corpus.py) | the six pairs, each with provenance: which system accepts it, which paper section, and a `hazard` field |
+| [`fpgap/harness.py`](fpgap/harness.py) | one cell → floor / total / differential, both gate definitions, both T1 readings |
+| [`fpgap/seeds.py`](fpgap/seeds.py) | Phase-5 generators: adversarial arrangements of values bounded inside the real activation range |
+| [`tools/probe_hardware.py`](tools/probe_hardware.py) | characterises a machine's arithmetic (TF32, storage rounding, accumulate width, fp64) so the record travels with results |
+| [`tools/check_corpus_device.py`](tools/check_corpus_device.py) | re-runs the Phase-1 float64 equivalence gate on a chosen device |
+| [`tools/validate_reference.py`](tools/validate_reference.py) | float64-as-truth check against mpmath at 50 digits |
+| [`tools/dump_activations.py`](tools/dump_activations.py) | regenerates `fixtures/activations.pt` from a TransformerOp checkpoint, with per-row cancellation stats |
+| [`tools/run_sweep.py`](tools/run_sweep.py) | Phase 4, synthetic arm — 54 cells on `randn` |
+| [`tools/run_sweep_activations.py`](tools/run_sweep_activations.py) | Phase 4, activation arm + shape-matched `randn` controls |
+| [`tools/run_seeded.py`](tools/run_seeded.py) | Phase 5 — catch rates, uniform vs four seeded strategies, 100 trials each |
+| [`tests/test_corpus.py`](tests/test_corpus.py) | Phase-1 exit criteria: ℝ-equivalence plus the negative control proving the instrument reads nonzero |
+| [`results/`](results/) | raw per-cell records — the artifact the tables are derived from |
+| [`fixtures/`](fixtures/) | real activation tensors (committed) + distribution stats |
+
 ## Status
 
 **Phases 0–5 of 6 complete**; only the writeup remains. Measured on an NVIDIA A10

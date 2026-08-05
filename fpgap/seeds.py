@@ -102,7 +102,6 @@ def shifted(shape, seed, box=REAL_BOX) -> Tensor:
     regime the fused one-pass variance form is known to fail in and which zero-mean
     activations never reach.
     """
-    g = _g(seed)
     base = box[1] * 0.8
     x = base + torch.randn(shape, generator=_g(seed), dtype=torch.float64) * 0.05
     return x.clamp(*box)
