@@ -23,14 +23,17 @@ writeup remains.
 **A1 largely holds at fp32; C1 is not established.** Every real activation site
 passes with ~10× headroom — including `post_ln`, which is zero-mean by construction
 and reaches row condition number **368,927**, 400× what uniform sampling produces.
-Seeded inputs do trip the gate at 1600–2100× tolerance, but those arrangements sit
+Seeded inputs do trip the gate — the elementwise violations are **≈2× tolerance**
+(the earlier 1600–2100× figures were scale-relative summaries with near-zero
+denominators; [`AUDIT.md`](AUDIT.md) Finding 2) — and those arrangements sit
 **+10.4σ** outside the real distribution, so they show these transformations *can*
 diverge, not that they *do*.
 
 **The one C1-supporting result that survived stress-testing:** `matmul_k_tiling`
-fails the gate **14% of the time under plain uniform sampling** at fp32 — and Phase
-4's single draw missed it. Single-sample validation misses a real failure five times
-in six.
+fails the gate **14% of the time [95% CI 9–22%] under gaussian sampling at the
+measured activation scale (σ≈2.7)** at fp32 — 0/100 at unit scale, so the catch
+rate is itself scale-dependent — and Phase 4's single draw missed it. A single-draw
+validation misses this failure 86% of the time.
 
 Errors and falsified claims are collected by failure mode in
 [`ERRATA.md`](ERRATA.md), including four that would have produced clean wrong
@@ -277,8 +280,10 @@ rented — a defensible trade for native bf16, but a deviation.
 transformation.* **Met** — `results/seeded_catch_rates.json`, 100 trials × 6 pairs ×
 5 strategies.
 
-Seeded inputs trip the gate on 4 of 6 pairs at 100%, at 1600–2100× tolerance. **But
-stress-testing showed the seeds are not realistic.** The `cancellation` strategy's
+Seeded inputs trip the gate on 4 of 6 pairs at a 100% rate; the elementwise
+violations are **≈2× tolerance** (the 1600–2100× figures were denominator artifacts —
+[`AUDIT.md`](AUDIT.md) Finding 2). **And stress-testing showed the seeds are not
+realistic.** The `cancellation` strategy's
 median row condition number is 4.5e6 against real rows' 42.8 — **+10.4σ** on a log
 scale, ~600× worse than the *worst* real row. Bounding values inside the observed
 range does not make the arrangement realistic, and the arrangement is the mechanism.
@@ -289,9 +294,9 @@ and its differential is 7.77e-06 against a 1e-4 gate. Condition rose 400× over
 uniform; the differential rose 11×.
 
 So Phase 5 shows these transformations **can** diverge, not that they **do**. What
-survives is `matmul_k_tiling` at 14% under plain uniform sampling — and the
-explanation for it became the project's headline. See the Verdict in
-[`CLAIM.md`](CLAIM.md).
+survives is `matmul_k_tiling` at 14% [9–22%] under gaussian sampling at activation
+scale (σ≈2.7; 0/100 at unit scale) — and the explanation for it became the
+project's headline. See the Verdict in [`CLAIM.md`](CLAIM.md).
 
 ---
 

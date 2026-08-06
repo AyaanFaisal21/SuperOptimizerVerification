@@ -112,9 +112,12 @@ written.** The answer is a third thing neither anticipated.
 
 **Satisfied, but by a mechanism that does not support its implied narrative.**
 
-`matmul_k_tiling` exceeds the gate on **14% of draws** under ordinary uniform
-sampling at fp32, at a realistic shape — no seeding required. That is an existence
-proof at realistic inputs.
+`matmul_k_tiling` exceeds the gate on **14% of draws [95% CI 9–22%]** under
+gaussian sampling at the measured activation scale (σ≈2.7) at fp32, at a realistic
+shape — no seeding required. At unit input scale the rate is 0/100, so the catch
+rate is itself scale-dependent, which is the mechanism restated *(scale condition
+added 2026-08-04 — [`AUDIT.md`](AUDIT.md) Finding 1)*. That is an existence proof
+at realistic inputs.
 
 But its **relative** error is 8.65e-07, a hundredfold *inside* the tolerance. It
 fails because absolute error is relative error × output magnitude, and matmul output

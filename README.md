@@ -27,6 +27,7 @@ correctness concern rather than a precision footnote.
 | [`PROGRESS.md`](PROGRESS.md) | Where the work stands against those phases, and where the outline turned out wrong |
 | [`NOTEBOOK.md`](NOTEBOOK.md) | Dated entries — prediction before each run, outcome after |
 | [`ERRATA.md`](ERRATA.md) | Every error, retraction and falsified claim, by failure mode — including five that would have produced clean wrong numbers |
+| [`AUDIT.md`](AUDIT.md) | Full-method audit (2026-08-04) in Simplified Technical English — nine findings, ten remaining steps |
 | [`papers/README.md`](papers/README.md) | The six-paper working set and what to read in each |
 
 ## The corpus
@@ -112,8 +113,10 @@ would make the check measure the transformation.
 
 Supporting results:
 
-- **Single-sample validation misses real failures.** `matmul_k_tiling` fails **14% of
-  uniform draws** at fp32 — and this project's own single-draw sweep missed it.
+- **Single-sample validation misses real failures.** `matmul_k_tiling` fails **14%
+  [95% CI 9–22%] of gaussian draws at the measured activation scale (σ≈2.7)** at
+  fp32 — 0/100 at unit scale, so the catch rate is itself scale-dependent — and this
+  project's own single-draw sweep missed it (a single draw misses it 86% of the time).
 - **The gate can reject a *more accurate* kernel.** Online softmax at fp16 is **15×
   closer to float64 truth** than the reference it is checked against, and fails —
   visible only because both gate definitions are reported.
@@ -125,9 +128,11 @@ Supporting results:
 
 Two claims were **retracted** during the work, both recorded rather than removed: a
 "100× tolerance gap" that rested on a category error, and "C1 survives at fp32," whose
-seeded inputs sit **+10.4σ** outside the real distribution. Every error and falsified
-claim is in [`ERRATA.md`](ERRATA.md); phase-by-phase status in
-[`PROGRESS.md`](PROGRESS.md).
+seeded inputs sit **+10.4σ** outside the real distribution — and whose "1600× the
+gate" severity figure was a scale-relative summary with a near-zero denominator; the
+true elementwise violations are **≈2× tolerance** ([`AUDIT.md`](AUDIT.md), Finding 2).
+Every error and falsified claim is in [`ERRATA.md`](ERRATA.md); phase-by-phase status
+in [`PROGRESS.md`](PROGRESS.md).
 
 ## License
 

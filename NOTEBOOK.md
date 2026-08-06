@@ -321,6 +321,53 @@ the one-pass form is not the weaker variant — `E[x²] − μ²` has no cancell
 μ ≈ 0. Its instability needs biased inputs, which is what the activation fixtures
 and Phase 5 are for.
 
+## 2026-08-04 — full-method audit: three measured corrections
+
+**Setup.** Adversarial pass over our own methodology — the treatment the papers got.
+Three suspicions were measurable; predictions committed in the run script before
+execution. Full findings and remaining steps in [`AUDIT.md`](AUDIT.md).
+
+**Predictions.** (A) At σ=1.0 the `matmul_k_tiling` uniform catch rate drops to
+~0–3% — the Phase 5 "uniform" generator draws at σ=2.67, not unit scale, and abs
+err at unit scale sits 0.8× atol. (B) CPU bf16 matmul is bit-equal to
+fp32-accumulate-then-round. (C) Cancellation-trial gate exceedance is ~3–10×, far
+below the 1620× scale-rel figure.
+
+**Outcomes.**
+
+- **A: confirmed, stronger than predicted.** σ=1.0: **0/100**. σ=2.67: **14/100**,
+  Wilson 95% CI **[9%, 22%]**. The 14% headline is real but scale-contingent, and no
+  document stated the scale. Corrected everywhere current; the finding *reinforces*
+  the thesis — the catch rate itself is a function of output magnitude — but the
+  reporting hid the conditionality.
+- **B: falsified.** CPU bf16 matmul equals *neither* fp32-accumulate-then-round
+  *nor* in-type stepwise accumulation. And the earlier cross-platform "identical to
+  every printed digit" claim compared 5-digit summary statistics, never tensors.
+  The "output quantisation masks the accumulation pathway" mechanism story is
+  unproven. Claim softened; bitwise comparison is AUDIT step 4.
+- **C: confirmed, worse than predicted.** True elementwise gate exceedance on a
+  cancellation trial: **2.0×**. The scale-rel figure reads 322× on the same trial
+  (max|baseline| = 6.4e-3 — near-cancelling row sums make the denominator tiny).
+  The committed 1600–2100× severity figures are the same artifact. Seeded failures
+  are real (100% catch, elementwise) but **~2× violations, not ~2000×**.
+
+Six further findings did not need new measurement: the seq-order baseline is not
+the field's tree-order reference kernel (differential may overstate for reduction
+pairs — unmeasured); the softmax immunity mechanism was misstated (median output
+5.9e-4 is 6× *larger* than atol, not smaller — immunity is rel err 100× under rtol
+with outputs ≤ 1); no rate carried confidence limits and "five times in six" should
+be "six times in seven"; the "systems test once" attribution was never verified;
+the 3×-spread claim rests on one seed and shape per pair; d/floor is a ratio of
+maxima at possibly different elements.
+
+**Read.** Fourth, fifth, and sixth results to shrink under scrutiny, and every one
+moved away from the thesis again. The severity correction is the painful one: the
+strongest-sounding number in the project was a denominator artifact. What survives
+is unchanged in kind — the gate measures scale, the catch rate is sample- and
+scale-dependent — but every magnitude is now smaller and carries its conditions.
+
+---
+
 ## 2026-08-03 — why only `matmul_k_tiling` breaks: it is the atol, not the transformation
 
 **Setup.** `matmul_k_tiling` fails 14% under plain uniform sampling at fp32 while

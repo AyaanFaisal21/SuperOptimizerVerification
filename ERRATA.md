@@ -201,3 +201,26 @@ Cost minutes each; recorded so they are not re-debugged.
 - **Whether Prism's artifact states a validation tolerance.** Verified absent from the
   *paper*; the code may set one. Checking it would strengthen or cleanly refute the
   sharpest observation in the project.
+
+---
+
+## 5. Findings of the 2026-08-04 full-method audit
+
+An adversarial pass over our own methodology; nine findings, three verified by new
+measurement before writing. The audit itself, with remaining steps, is
+[`AUDIT.md`](AUDIT.md); the measurements are in `NOTEBOOK.md` (2026-08-04).
+
+| # | Finding | Class |
+|---|---|---|
+| 1 | The 14% catch rate is input-scale-contingent: 14/100 [CI 9–22%] at the measured activation scale σ≈2.7, **0/100 at unit scale**. No document stated the scale | measured; corrected |
+| 2 | The "1600–2100× the gate" severity figures were `scale_rel/GATE` with near-zero denominators; true elementwise exceedance is **≈2×** | measured; corrected |
+| 3 | The seq-order baseline is not the field's tree-order reference kernel; reduction-pair differentials may overstate the field's comparator | open — AUDIT step 3 |
+| 4 | The cross-platform "identical" claim compared 5-digit statistics, not tensors; CPU bf16 matmul matches neither naive accumulator model | measured; mechanism open |
+| 5 | Softmax immunity mechanism misstated: median output 5.9e-4 is 6× *larger* than atol. True mechanism: rel err 100× under rtol, outputs ≤ 1 | corrected |
+| 6 | No confidence limits on any rate; "five times in six" should be "six times in seven" (86%) | corrected |
+| 7 | "These systems test once" was never verified against Axon/Prism | removed from current docs |
+| 8 | Narrow evidence: 3×-spread claim from one seed/shape; mpmath check small shapes only; fixtures from one model/batch; REAL_BOX from one site | disclosed |
+| 9 | `d/floor` is a ratio of maxima at possibly different elements — compares magnitudes, not element-level coupling | disclosed |
+
+The pattern of §2 continues: every number that supported the thesis shrank under
+scrutiny. This is now six for six.
