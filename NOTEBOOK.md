@@ -321,6 +321,41 @@ the one-pass form is not the weaker variant — `E[x²] − μ²` has no cancell
 μ ≈ 0. Its instability needs biased inputs, which is what the activation fixtures
 and Phase 5 are for.
 
+## 2026-08-04 — cross-platform bitwise test: half run, instance unreachable
+
+**Setup.** Closing AUDIT Step 4 before releasing the A10. Predictions committed in
+the run script before execution: (1) CPU vs GPU fp16/bf16 matmul outputs are NOT
+bit-identical; (2) the 5-digit summary statistics DO match; (3) GPU mm ≈
+fp32-accumulate-then-round while CPU mm matches neither simple model.
+
+**Outcome.** The local half completed; the A10 stopped answering (ssh timeout)
+before the remote half ran. Predictions 1–2 are untestable until some CUDA machine
+exists again. Prediction 3's CPU half is measured:
+
+| shape | dtype | CPU mm vs fp32-accumulate-then-round |
+|---|---|---|
+| 512×4096×512 | fp16 | 1,561 / 262,144 elements differ (0.6%) |
+| 512×4096×512 | bf16 | **108 / 262,144 differ (0.04%)** |
+| 128×256×128 | both | equals neither model exactly; 26 and 1 mismatches vs upcast |
+
+**Read.** CPU narrow-dtype matmul is effectively **fp32 accumulation in a different
+(blocked) order** — the rare disagreements are rounding-boundary flips, not a
+narrower accumulator. This corrects the 2026-08-03 line "torch CPU accumulates bf16
+matmuls in bf16": that was measured only for elementwise stepwise adds (the
+stagnation probe) and does not transfer to matmul. It also replaces the "output
+quantisation masks the accumulation pathway" story — the two platforms agreed to
+five digits because they run *nearly the same computation*, not because rounding
+hides different ones.
+
+**Checkpoint accounting.** `gpt.pt` existed only on the instance. If the instance
+was terminated, the checkpoint is unrecoverable. `fixtures/activations.pt` remains
+the canonical committed artifact; regeneration now requires retraining, which
+yields a statistically equivalent but **not bit-identical** fixture set. Recorded
+for threats-to-validity, and as AUDIT Step 11: on any future rental, copy the
+checkpoint off the box *first*. The artifact-rescue lesson arrived one turn late.
+
+---
+
 ## 2026-08-04 — full-method audit: three measured corrections
 
 **Setup.** Adversarial pass over our own methodology — the treatment the papers got.

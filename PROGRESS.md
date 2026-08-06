@@ -241,6 +241,11 @@ a stronger version of that result than the synthetic one.
 Caveat: one small char-level model. A post-norm architecture, or LayerNorm applied
 to something other than a residual stream, could differ.
 
+**2026-08-04:** the checkpoint behind this fixture existed only on the rented A10,
+now unreachable. The committed fixture stays canonical; regeneration requires
+retraining and yields a statistically equivalent but not bit-identical set
+([`AUDIT.md`](AUDIT.md) Step 11).
+
 ---
 
 ## Phase 4 — Main sweep ✅

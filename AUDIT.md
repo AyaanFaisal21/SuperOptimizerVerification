@@ -94,7 +94,18 @@ It does not show element-level agreement.
 Measure the differentials again. Record the difference. — **OPEN**
 
 **Step 4.** Measure the matmul accumulator on the two computers.
-Compare the output tensors bit by bit. Then correct the platform text. — **OPEN**
+Compare the output tensors bit by bit. Then correct the platform text. — **PART DONE**
+The CPU half is measured (2026-08-04, `NOTEBOOK.md`).
+The CPU matmul agrees with fp32 accumulation for 99.4% (fp16) and 99.96% (bf16) of elements.
+Thus the CPU does not accumulate in the narrow type for matmul.
+The earlier platform text said the opposite. It is corrected.
+The GPU half needs a CUDA computer. The instance does not answer.
+
+**Step 11.** The model checkpoint was only on the rented computer.
+That computer does not answer.
+If a GPU computer is rented again, copy the checkpoint first.
+If the checkpoint is lost, train the model again with the same script.
+Then record that the new fixtures are equivalent, but not bit-equal. — **OPEN**
 
 **Step 5.** Measure the catch rate at scales 0.5, 1.0, 2.0, 2.7, and 4.0.
 Make a plot of rate against scale. — **OPEN**
