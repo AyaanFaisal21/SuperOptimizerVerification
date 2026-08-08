@@ -19,3 +19,6 @@ results/**/*.npy
 *.egg-info/
 .ipynb_checkpoints/
 .DS_Store
+
+# full verbose doc originals for future agents. local only.
+agent-notes/

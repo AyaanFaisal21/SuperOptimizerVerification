@@ -1,855 +1,103 @@
 # Notebook
 
-Dated entries. **Prediction before each run, outcome after.** The prediction is
-written and committed before the run executes — that ordering is the whole point
-of the file, and it is visible in git history whether or not it was honored.
-
-Format:
-
-```
-## YYYY-MM-DD — short title
-
-**Setup.** What is being run, on what.
-**Prediction.** What I expect, with a number where possible. Written first.
-**Outcome.** What happened.
-**Read.** What it means, including "nothing" if that is the answer.
-```
+Dated run record. The prediction is written and committed before each run.
+Git history shows whether that order was honored.
+Entries are chronological. Full prose versions of all entries are preserved in git history.
 
 ---
 
-## 2026-08-03 — Phase 0, project registered
+## 2026-08-03: Phase 0, project registered
 
-**Setup.** `cornfieldV2` as the repo root; it already held the six-paper working
-set (`papers/README.md` is the committed index, PDFs gitignored). Consolidated
-`BACKGROUND.md` and `ROADMAP.md` in from `~/Documents/fp-verification-gap/`, which
-was sitting inside the home-directory git repo and would never have been
-separately publishable. `CLAIM.md` written and dated before any measurement code.
+- Setup: repo consolidated; CLAIM.md written and dated before any measurement code.
+- Toolchain: Python 3.13.1, torch 2.8.0, no CUDA on this machine (M3 Pro).
+- Flag for later: the roadmap's fp16 native-vs-simulated gate assumes CUDA.
 
-Toolchain on this machine: Python 3.13.1, torch 2.8.0, numpy 2.3.1, mpmath 1.3.0.
-**No CUDA** — `torch.cuda.is_available()` is False; MPS only. The 2060 (Turing
-sm_75) named in the roadmap is a different box, the Windows one that
-`cornfield/winbuild.bat` targets.
+## 2026-08-03: Phase 1, corpus built
 
-**Prediction.** None — this is setup, nothing is being measured. Recording it so
-the first real entry has a baseline to point at.
+- Setup: six pairs; order-pinned summation; float64 equivalence gate at 1e-12.
+- Prediction: all 18 cells at or under 1e-14; negative control near 1e-7.
+- Outcome: the check failed on first run. Two instrument bugs, both mine:
+  - The metric was underspecified. Per-element relative error is unbounded at near-zero outputs. Gate moved to scale-relative, same 1e-12. CLAIM amendment.
+  - Inputs were drawn at float32 and cast up. Float64 sums were exact in every order and reduction pairs read exactly zero. ERRATA 1.1.
+- Post-fix: 18/18 cells at 6e-16 to 3.5e-15. Control: seq vs tree 1.0e-06.
+- Read: a zero-reading instrument passes an equivalence check. The negative control is not optional.
 
-**Outcome.** Phase 0 complete. Repo has a dated claim in history.
+## 2026-08-03: A10 characterisation
 
-**Read.** One thing that surfaced early and matters later: Phases 0–1 are pure
-float64 CPU work and are unaffected by the missing GPU, but **Phase 2's fp16
-native-vs-simulated validation gate assumes CUDA**. On CPU, torch's float16 ops
-frequently upcast to fp32 internally, which would make "native fp16" here itself a
-kind of simulation — and comparing a simulation against a simulation proves
-nothing. That gate has to run on the 2060, or the bf16 claim gets dropped per the
-roadmap's own kill criterion. Not a blocker now; flagged at the Phase 1→2 boundary
-so it is decided deliberately rather than discovered.
+- Prediction: TF32 flag reads False; fp32 matmul near 1e-7 off, near 1e-3 on; stagnation probes stagnate; reduced-precision-reduction flags change little; fp64 20-40x slow.
+- Outcome: all held. TF32 off 3.98e-07, on 2.99e-04 (750x). Flags bit-identical (no-op at the test shape). fp64 35.2x. Corpus 18/18 on CUDA.
+- Falsified, both mine, both predicted against myself first: the switchable accumulation-width axis; CPU overstating error vs tensor cores. Paired inputs gave 3.9533e-04 (fp16) and 3.0960e-03 (bf16) on both machines to five printed digits. See 2026-08-04 revision.
+- Unpredicted: an untransformed matmul already exceeds 1e-4 at fp16 and bf16. This forced the differential gate and the floor metric.
 
----
+## 2026-08-03: Phase 2 closed; Phase 4 predictions
 
-## 2026-08-03 — Phase 1, corpus built and both exit criteria run
+- Float64 confirmed adequate as truth: worst drift vs 50-digit mpmath 8.2e-16.
+- Disclosure: the MLP-shape column was already seen; predictions cover the unseen cells.
+- Predictions: fp32 all pass, no T1; fp16/bf16 all fail; d/floor near 1 for reductions, shape-invariant; `matmul_k_tiling` d/floor orders by K; gate definitions mostly agree, disagreements at layernorm.
 
-**Setup.** Six pairs in `fpgap/corpus.py`, each exactly equal over ℝ, each with a
-record of which system accepts it and on what grounds: split reduction
-(part/red/comb), reassociation (seq vs tree), scalar-past-matmul (Axon §4.2),
-LayerNorm two-pass vs fused one-pass (from `cornfield/autotune_layernorm.py`),
-softmax naive vs online (from `TransformerOp/kernels/attn_ext.cu:81`), and matmul
-K-tiling. Accumulation order is controlled explicitly in `fpgap/accumulate.py`
-rather than delegated to `torch.sum` — torch uses a blocked pairwise cascade on CPU
-and a tree reduction on CUDA, and measuring torch against torch would measure
-torch's internals invisibly. `tree_sum` is strided halving specifically because
-that is what `ln_kernel`'s `seg_s[lane] += seg_s[lane + st]` does.
+## 2026-08-03: Phase 4 synthetic arm, outcome
 
-**Prediction (written before the first run).** All 18 cells (6 pairs × 3 shape
-classes) agree in float64 at ≤1e-14, comfortably inside the 1e-12 gate. The
-negative control shows the three accumulation orders differing in fp32 at roughly
-1e-7 — a few hundred × fp32 eps for reductions of this length.
+- 54 cells in 7 s. fp32 18/18 pass. fp16/bf16 36/36 fail, all T1.
+- d/floor classes: reordering near 1; matmul pairs 1.8-3.0; layernorm 0.05-0.43.
+- Predictions 1-3 held. Prediction 4 falsified: K=512 reads d/floor 4.01 against K=768 at 3.48. Cause unknown; confounded shapes. Open.
+- Prediction 5 half held: 51/54 agree, but all three disagreements are `softmax_online` fp16: fail vs baseline, pass vs truth. The variant is 15x closer to truth than its reference.
+- Read: at fp32 on randn, A1 holds with two orders of headroom. The gate-direction result is visible only because both definitions are reported.
 
-**Outcome.** Negative control: 1.0e-06 seq-vs-tree, 9.6e-07 seq-vs-chunked. About
-10× larger than predicted, which is the right direction for length-4096 rows and
-means the instrument is, if anything, more sensitive than assumed.
+## 2026-08-03: RETRACTED ENTRY, kept as a marker
 
-The equivalence check **failed on the first run** — `scalar_past_matmul/mlp` at
-7.5e-11. Two distinct problems behind it, both mine, neither a finding:
+- Claimed: the literature states 1e-4 but shipping code uses 1e-2, a 100x gap.
+- Retracted the same day. Four reasons: different groups (Axon is AWS/UIUC; Mirage is CMU); Mirage's paper states no float tolerance; the 1e-2 sites are MPK runtime-kernel tests, not superoptimizer validation; the repo at HEAD is MPK, not the OSDI '25 system.
+- Verified instead: Mirage's superoptimizer path has no float check; its verification is exact, as the paper says. Axon states 1e-4 at FP32. Prism states nothing and benchmarks half precision.
+- Lesson: a number that supports the thesis deserves more scrutiny, not less. ERRATA 1.5.
 
-1. *The metric was underspecified.* Max per-element relative error is unbounded at
-   cancellation-produced near-zeros. The offending element has magnitude 1.3e-05 in
-   a tensor whose max is 4.88, with an absolute difference of 9.8e-16 — float64
-   rounding noise at the scale of the summands. Gate moved to scale-relative error
-   at the same 1e-12; see CLAIM.md amendment. Both measures are still printed.
-2. *The reference was not rounding.* Inputs were drawn at float32 and cast **up** to
-   float64, leaving 29 spare mantissa bits, so float64 summation of a few thousand
-   such values is exact in every order. `split_reduction` and `reassociation` read
-   exactly `0.000e+00`. They were passing because the reference had too much
-   headroom to round — not because the pair is equivalent. Fixed by drawing at
-   float64 and rounding down, which also gives every precision the same underlying
-   real values. Pinned by `test_float64_reference_actually_rounds`.
+## 2026-08-03: Phase 4 activation arm
 
-Post-fix: all 18 cells at 6e-16 – 3.5e-15 scale-relative, three orders inside the
-gate, and the reduction pairs now show genuine float64 rounding instead of zeros.
-4 tests pass.
+- Setup: 24 cells on real activations, mapped to the tensors each kernel actually sees, plus 16 randn controls at identical shapes to unconfound distribution from shape.
+- Prediction: real behaves like randn at fp32; no verdict flips.
+- Outcome: correct. 8/8 fp32 pass, 16/16 reduced-precision fail, d/floor structure reproduces. Floor ratios real/randn: biased sites 2.3-3.6x, centred sites 0.96-1.49x.
+- Read: "validate on synthetic, ship on real" is a 3x effect at biased sites, not orders of magnitude.
 
-**Read.** The second problem is the one worth remembering. It produced a *cleaner*
-result than the truth — a perfect zero — and a perfect zero on an equivalence check
-reads as success. If the same flaw had survived into Phase 4 it would have
-suppressed real error at the reduction pairs and pushed the whole sweep toward A1,
-which is the direction I would be least likely to interrogate. That is the argument
-for the negative control being a first-class exit criterion rather than a nicety:
-check 1 alone could not have caught it, because check 1 is satisfied by an
-instrument that reads zero.
+## 2026-08-03: Phase 5 predictions
 
-Not a result, but recorded because it was measured before the fix and I do not want
-to rediscover it later: no pair is degenerate in fp32 — all 18 cells diverge
-(8e-08 – 1.2e-06 scale-relative), so nothing in the corpus is dead weight. Fraction
-of elements over 1e-4 relative is nonzero in 10 cells but peaks at 0.20%, under
-T1's 1% bar. Those are the same near-zero denominators, on `randn`, at fp32, with
-no seeding — i.e. the condition under which the field's assumption is *most* likely
-to hold. Phases 3–5 are what test it.
+- Strategy: seed the arrangement, not the magnitudes. All values clamp into the observed real range.
+- Predictions: uniform catches nothing; cancellation breaks reductions above 80%; shifted breaks layernorm near 100%; dynamic_mix weak at fp32; C1 survives at fp32 via seeding.
+- Pre-stated kill outcome: if seeding also finds nothing, A1 wins decisively.
 
----
+## 2026-08-03: Phase 5 outcome
 
-## 2026-08-03 — A10 acquired; hardware characterisation (prediction only)
+- Catch rates (gate fail fraction, 100 trials): cancellation 100% on both reductions and on `matmul_k_tiling`; shifted 100% on layernorm; softmax 0% under every strategy; uniform 0% except `matmul_k_tiling` at 14%.
+- Prediction 1 wrong in the useful direction: uniform catches `matmul_k_tiling` 14% of the time. Phase 4's single draw had missed it.
+- Prediction 4 wrong: dynamic_mix 0% everywhere at fp32.
+- Severity figures reported here as 1600-2100x were later corrected to near 2x elementwise. See 2026-08-04 audit.
+- Limitation stated at once: values shown realistic, arrangements not shown to occur.
 
-**Setup.** Hardware decision resolved: a Lambda `gpu_1x_a10`, us-east-1. Verified
-NVIDIA A10, **compute capability 8.6** (Ampere), 23 GB, driver 580.105.08, CUDA
-12.8, Python 3.10.12, torch **2.7.0**. Note the version skew against this Mac
-(torch 2.8.0, Python 3.13.1) — recorded because reduced-precision defaults have
-changed between torch releases before, and any cross-machine comparison has to
-account for it.
+## 2026-08-03: Phase 5 stress-tested
 
-Ampere settles the bf16 question: native in hardware, so nothing is simulated. The
-roadmap's Phase 2 simulation sub-task, its stated bf16 limitation, the
-corresponding Phase 6 threat-to-validity, and the second kill criterion are all
-moot. `tools/probe_hardware.py` is the replacement — it characterises the machine's
-arithmetic so that record can travel with every result.
+- Question: how far outside the real distribution do the seeds sit?
+- Outcome: cancellation median row condition 4.5e6 vs real 42.8. That is 10.4 sigma out on a log scale.
+- Control: the worst real site, post_ln at row condition 368,927, still passes at 7.77e-06. Condition rose 400x over uniform; the differential rose 11x.
+- Read: A1 mostly holds at fp32. The seeds prove "can diverge," not "does." The surviving C1 result is the uniform 14%.
 
-**Prediction (written and committed before the probe runs).**
+## 2026-08-03: why only `matmul_k_tiling` breaks
 
-1. **TF32.** `torch.backends.cuda.matmul.allow_tf32` reads **False** — the default
-   flipped in torch 1.12 — and `cudnn.allow_tf32` reads **True**. Empirically, fp32
-   matmul vs float64 lands near **1e-7** with TF32 off and near **1e-3** with it on,
-   a ratio of roughly 10³–10⁴. If the flag instead reads True on this build, every
-   fp32 number this box would have produced is a ~10-bit-mantissa baseline and the
-   whole fp32 arm would have been quietly wrong.
-2. **Storage rounding.** The stagnation probe returns exactly 1.0 for both fp16 and
-   bf16 on device, matching the Mac. Elementwise accumulation is genuinely in-type.
-3. **Matmul accumulate.** fp16 and bf16 matmul error against exact arithmetic on the
-   same rounded inputs is ~1e-3, dominated by rounding the *output* to the narrow
-   type rather than by accumulation. I therefore expect the two settings of
-   `allow_*_reduced_precision_reduction` to differ **little or not at all** at
-   K=4096 — the tensor-core MMA accumulates in fp32 either way and the flag governs
-   only the split-k reduction. If that holds, "accumulation width as a switchable
-   experimental axis" is weaker than I claimed when recommending this box, and I
-   should say so rather than quietly drop it.
-4. **Determinism.** Repeated identical matmuls are bitwise equal within a process.
-5. **float64.** Works; roughly 20–40× slower than fp32 (A10 is nominally 1:32).
+- The failing trial has 1 bad element of 4096. Its magnitude is 750x below the tensor median, so only atol protects it.
+- Failure rate tracks output count: 2% at 256 outputs, 48% at 16384.
+- Across pairs, relative errors span 3x; absolute errors span four orders, because output magnitudes do.
+- Controlled K sweep at unit scale, M and N pinned: pass at K=128 (1.34e-05), pass at K=512 (7.63e-05), fail at K=2048 (2.37e-04).
+- Read: atol is a constant applied to arbitrary scale. The gate measures magnitude, not soundness. Production K is 4096-16384.
 
-**Outcome.** Probe run on the A10. Predictions 1, 2, 4, 5 held; 3 held in the
-direction I flagged against myself, and a fourth thing turned up that neither the
-prediction nor the roadmap anticipated.
+## 2026-08-04: full-method audit
 
-| Check | Predicted | Measured |
-|---|---|---|
-| `cuda.matmul.allow_tf32` | False | **False** ✓ |
-| `cudnn.allow_tf32` | True | **True** ✓ |
-| fp32 matmul, TF32 off | ~1e-7 | **3.98e-07** ✓ |
-| fp32 matmul, TF32 on | ~1e-3 | **2.99e-04** (ratio 750×, I said 10³–10⁴) |
-| fp16/bf16 stagnation probe | stagnates | **stagnates, both** ✓ |
-| reduced-precision-reduction flags | little or no difference | **bit-identical** ✓ |
-| matmul repeatable bitwise | yes | **yes** ✓ |
-| fp64 slowdown | 20–40× | **35.2×** ✓ |
+- Three measured checks, predictions committed in the run script:
+  - A. The 14% catch rate is scale-contingent. Unit scale 0/100; activation scale (sigma 2.7) 14/100, CI 9-22%. Confirmed, stronger than predicted.
+  - B. CPU bf16 matmul equals fp32-accumulate-then-round: falsified. It equals neither simple model.
+  - C. Cancellation gate exceedance: 2.0x true, against 322x by the scale-relative summary. Confirmed, worse than predicted.
+- Six further findings without new measurement: seq baseline vs the field's tree references; the cross-platform claim was a statistic, not bits; softmax mechanism misstated; no confidence limits and a 5/6-vs-6/7 slip; unverified "systems test once"; narrow evidence base.
+- Read: results moved away from the thesis again. Full list: AUDIT.md.
 
-Corpus re-checked on CUDA: **18/18 cells pass** the float64 equivalence gate at
-2.8e-16 – 2.4e-15, same magnitudes as CPU. Equivalence over ℝ is not a
-platform-specific accident.
+## 2026-08-04: cross-platform test, half run
 
-**Read — two claims of mine are now falsified, and both were things I told Ayaan
-when recommending this machine.**
-
-*First: the A10 does not make accumulation width a switchable experimental axis.*
-I argued `allow_fp16_reduced_precision_reduction` and its bf16 twin would give the
-in-type vs fp32-accumulate contrast on real hardware. Measured, the two settings
-are **bit-identical** — 3.972063525748143e-04 either way. Almost certainly cuBLAS
-never selected a split-k kernel at 512×4096×512, so the flag was a no-op; the
-tensor-core MMA accumulates in fp32 regardless. Precise statement: the flag has no
-observable effect *at this shape*, which is not the same as accumulation width
-never mattering. But the switchable axis I promised is not there.
-
-*Second: CPU does not overstate error relative to tensor cores.* I claimed torch
-CPU accumulating bf16 in bf16 would inflate error versus a GPU accumulating in
-fp32. Paired test, identical input bits shipped to both machines:
-
-| dtype | Mac M3 CPU | A10 CUDA |
-|---|---|---|
-| fp32 | 2.6421e-06 | 8.7677e-07 |
-| fp16 | **3.9533e-04** | **3.9533e-04** |
-| bf16 | **3.0960e-03** | **3.0960e-03** |
-
-Identical to every printed digit at fp16 and bf16. The reason is that **rounding
-the output to the narrow type dominates everything else**: half an ulp is 4.88e-04
-for fp16 and 3.9e-03 for bf16, and the measurements sit right at that scale. The
-accumulation pathway is entirely masked. Only fp32 shows a genuine platform gap
-(CPU 3× worse), because fp32 output has enough mantissa not to mask it.
-
-This narrows to matmul specifically. The reduction pairs produce one scalar per row
-from thousands of accumulation steps, so output quantisation cannot dominate there
-the way it does here — that has to be measured separately, not assumed either way.
-
-**The thing nobody predicted, and it may reframe half the claim.** At fp16 and
-bf16, an **untransformed matmul already exceeds the `1e-4` gate** — 3.95e-04 and
-3.10e-03 against exact arithmetic on its own inputs. Before any transformation is
-applied. The identity fails.
-
-C1's second clause says the gap "widens under the reduced precisions that
-production inference runs in." That is at risk of being trivially true: precision
-alone blows the tolerance, no superoptimizer required. The sharp question is
-whether a transformation adds error **beyond what the baseline already suffers at
-that precision** — i.e. err(variant vs truth) against err(baseline vs truth), not
-just against the absolute gate.
-
-No threshold moves. T1 and the registered gate stand exactly as written. What this
-changes is the *analysis plan*: the differential has to be co-reported with the
-absolute gate, or the bf16 column will be a row of failures that says nothing about
-transformations. And the observation stands on its own as a result — Axon validates
-at `rtol=atol=1e-4` in FP32, and that gate is simply **inapplicable** at the
-precision production actually runs at, independent of any superoptimizer. What the
-field substitutes at bf16 is not stated in any of the three papers.
-
-**Also worth recording.** TF32 on costs 750× accuracy and lands at 2.99e-04 — over
-the gate by itself. `cudnn.allow_tf32` is True by default and left that way; it does
-not touch matmul, but any future conv path would need the same treatment. Every
-script in this repo pins `matmul.allow_tf32 = False` explicitly rather than
-inheriting it.
-
----
-
-## 2026-08-03 — Phase 2 closed; Phase 4 synthetic arm (prediction)
-
-**Setup.** Three things landed before this run. `CLAIM.md` amended: the gate is now
-the differential (variant vs baseline at the same precision), verified against
-Axon §4.6's literal text, with the as-registered form retained and co-reported.
-`fpgap/harness.py` emits floor / total / differential per cell plus both gate
-readings and both T1 readings. `tools/validate_reference.py` confirms float64 is
-adequate as truth — worst drift against mpmath at 50 digits is **8.2e-16, 4× float64
-eps**, twelve orders below the 1e-4 gate. That closes Phase 2's exit criteria.
-
-Now the Phase 4 synthetic arm: 6 pairs × 3 shape classes × 3 precisions = 54 cells,
-`randn` inputs. The realistic-activation arm waits on the checkpoint currently
-training on the A10.
-
-**Disclosure.** The MLP-shape column is *not* a blind prediction — I measured those
-18 cells while answering a question about the gate correction, and they are quoted
-in the previous entry. The predictions below are therefore about what I have **not**
-seen: the small and attention shape classes, and how the ratios move with shape.
-
-**Prediction.**
-
-1. **fp32: all 18 cells pass the Axon gate**, at every shape class. No fp32 cell
-   trips T1 (≥1% of elements over 1e-4 relative). The floor is ~1e-6 against a 1e-4
-   gate — two orders of headroom — and `randn` cannot supply the ~100× amplification
-   needed to close it.
-2. **fp16 and bf16: all 36 cells fail the Axon gate.** Not because the
-   transformations are bad but because the differential tracks the precision floor.
-3. **`d/floor ≈ 1` for the reduction pairs at every shape.** Both sides scale with
-   the same accumulation length, so the ratio should be roughly shape-invariant even
-   as the absolute numbers grow with row length. If this instead drifts with shape,
-   my reading of why the reductions behave this way is wrong.
-4. **`matmul_k_tiling` keeps `d/floor > 1` and it tracks K.** K is 256 / 768 / 512
-   for small / mlp / attention, and d/floor was 3.48 at fp16-mlp, so I expect the
-   attention and small cells to come in lower than mlp — ordering by K rather than
-   by shape-class name.
-5. **The two gate definitions agree on the verdict in the large majority of cells.**
-   Where they disagree, it should be `layernorm_variance`, whose floor is enormous
-   at reduced precision while its differential is small.
-
-**Outcome.** 54 cells in 7 s (CPU). Raw records in `results/sweep_randn.json`.
-
-| Prediction | Result |
-|---|---|
-| 1. fp32: all 18 pass, no T1 failures | **correct** — 18/18 pass, 0 T1 |
-| 2. fp16/bf16: all 36 fail | **correct** — 36/36 fail, all trip T1 |
-| 3. `d/floor ≈ 1` for reductions, shape-invariant | **correct** — split 0.82–1.10, reassoc 0.94–1.09 |
-| 4. `matmul_k_tiling` `d/floor` orders by K | **FALSIFIED** |
-| 5. gates mostly agree; disagreements at layernorm | **half** — 51/54 agree, but the 3 are softmax |
-
-**Prediction 4 is wrong and I do not have an explanation.** I expected `d/floor` to
-track K, so attention (K=512) should sit below mlp (K=768). Measured: attention
-**4.01** at both fp16 and bf16, against mlp 3.48/2.10 and small (K=256) 2.07/2.08.
-K=512 exceeds K=768. Whatever drives the amplification, it is not K-tile count
-alone — output width (N = 3072 mlp vs 256 attention) and the max-based normaliser
-are both confounded with it here. Recorded as open; it needs a controlled sweep
-over K with M and N pinned, which the current shape classes cannot separate.
-
-**Prediction 5 was half-reasoned.** The majority-agreement part held (51/54). My
-guess at *which* pair would disagree was wrong — I said `layernorm_variance` because
-its floor is enormous at reduced precision. The three disagreements are all
-`softmax_online` at fp16, one per shape class.
-
-**The disagreement cells are the headline result.** All three read
-`axon = FAIL, as-registered = PASS`. The online-softmax variant is close enough to
-float64 truth to pass a 1e-4 gate against *truth*, and fails only when compared
-against the naive baseline — because the baseline is the inaccurate side. At
-mlp/fp16 the variant is **15× closer to truth** than the baseline it is checked
-against (6.03e-04 vs 8.94e-03).
-
-That is the "gate rejects the more accurate kernel" claim, demonstrated in a cell
-where the two gate definitions actually diverge — which is precisely why the
-dual-reporting rule from this morning's amendment was worth adopting. Under the
-as-registered definition alone this result is invisible.
-
-**Scope it honestly.** Softmax outputs have magnitude ~1/N, so `atol = 1e-4` is
-comparable to the output values themselves and the gate is unusually permissive
-*against truth* for this operator. The differential still fails because the
-baseline's own error is large in absolute terms. So the mechanism is partly an
-atol artifact specific to small-magnitude outputs, not purely a statement about
-reordering. The finding stands; the explanation needs that caveat attached.
-
-**`d/floor` splits the corpus into three classes,** which is the metric doing the
-job it was introduced for (mean over fp16+bf16 cells):
-
-| class | pairs | `d/floor` |
-|---|---|---|
-| reordering only | `reassociation` 1.00, `split_reduction` 0.97, `softmax_online` 0.88 | ≈ 1 |
-| genuinely amplifying | `scalar_past_matmul` 1.80, `matmul_k_tiling` 2.96 | > 1 |
-| suppressed | `layernorm_variance` 0.40 | < 1 |
-
-The first class adds nothing beyond what precision costs — the differential just
-tracks the floor, and a gate at 1e-4 fails them for being *different*, not wrong.
-The second genuinely amplifies. The third is the interesting one: at bf16-mlp
-`layernorm_variance` has a floor of 3.55e-01 and a differential of 1.60e-02, so
-both forms are catastrophically wrong and wrong *together*. On zero-mean `randn`
-the one-pass form is not the weaker variant — `E[x²] − μ²` has no cancellation when
-μ ≈ 0. Its instability needs biased inputs, which is what the activation fixtures
-and Phase 5 are for.
-
-## 2026-08-04 — cross-platform bitwise test: half run, instance unreachable
-
-**Setup.** Closing AUDIT Step 4 before releasing the A10. Predictions committed in
-the run script before execution: (1) CPU vs GPU fp16/bf16 matmul outputs are NOT
-bit-identical; (2) the 5-digit summary statistics DO match; (3) GPU mm ≈
-fp32-accumulate-then-round while CPU mm matches neither simple model.
-
-**Outcome.** The local half completed; the A10 stopped answering (ssh timeout)
-before the remote half ran. Predictions 1–2 are untestable until some CUDA machine
-exists again. Prediction 3's CPU half is measured:
-
-| shape | dtype | CPU mm vs fp32-accumulate-then-round |
-|---|---|---|
-| 512×4096×512 | fp16 | 1,561 / 262,144 elements differ (0.6%) |
-| 512×4096×512 | bf16 | **108 / 262,144 differ (0.04%)** |
-| 128×256×128 | both | equals neither model exactly; 26 and 1 mismatches vs upcast |
-
-**Read.** CPU narrow-dtype matmul is effectively **fp32 accumulation in a different
-(blocked) order** — the rare disagreements are rounding-boundary flips, not a
-narrower accumulator. This corrects the 2026-08-03 line "torch CPU accumulates bf16
-matmuls in bf16": that was measured only for elementwise stepwise adds (the
-stagnation probe) and does not transfer to matmul. It also replaces the "output
-quantisation masks the accumulation pathway" story — the two platforms agreed to
-five digits because they run *nearly the same computation*, not because rounding
-hides different ones.
-
-**Checkpoint accounting.** `gpt.pt` existed only on the instance. If the instance
-was terminated, the checkpoint is unrecoverable. `fixtures/activations.pt` remains
-the canonical committed artifact; regeneration now requires retraining, which
-yields a statistically equivalent but **not bit-identical** fixture set. Recorded
-for threats-to-validity, and as AUDIT Step 11: on any future rental, copy the
-checkpoint off the box *first*. The artifact-rescue lesson arrived one turn late.
-
----
-
-## 2026-08-04 — full-method audit: three measured corrections
-
-**Setup.** Adversarial pass over our own methodology — the treatment the papers got.
-Three suspicions were measurable; predictions committed in the run script before
-execution. Full findings and remaining steps in [`AUDIT.md`](AUDIT.md).
-
-**Predictions.** (A) At σ=1.0 the `matmul_k_tiling` uniform catch rate drops to
-~0–3% — the Phase 5 "uniform" generator draws at σ=2.67, not unit scale, and abs
-err at unit scale sits 0.8× atol. (B) CPU bf16 matmul is bit-equal to
-fp32-accumulate-then-round. (C) Cancellation-trial gate exceedance is ~3–10×, far
-below the 1620× scale-rel figure.
-
-**Outcomes.**
-
-- **A: confirmed, stronger than predicted.** σ=1.0: **0/100**. σ=2.67: **14/100**,
-  Wilson 95% CI **[9%, 22%]**. The 14% headline is real but scale-contingent, and no
-  document stated the scale. Corrected everywhere current; the finding *reinforces*
-  the thesis — the catch rate itself is a function of output magnitude — but the
-  reporting hid the conditionality.
-- **B: falsified.** CPU bf16 matmul equals *neither* fp32-accumulate-then-round
-  *nor* in-type stepwise accumulation. And the earlier cross-platform "identical to
-  every printed digit" claim compared 5-digit summary statistics, never tensors.
-  The "output quantisation masks the accumulation pathway" mechanism story is
-  unproven. Claim softened; bitwise comparison is AUDIT step 4.
-- **C: confirmed, worse than predicted.** True elementwise gate exceedance on a
-  cancellation trial: **2.0×**. The scale-rel figure reads 322× on the same trial
-  (max|baseline| = 6.4e-3 — near-cancelling row sums make the denominator tiny).
-  The committed 1600–2100× severity figures are the same artifact. Seeded failures
-  are real (100% catch, elementwise) but **~2× violations, not ~2000×**.
-
-Six further findings did not need new measurement: the seq-order baseline is not
-the field's tree-order reference kernel (differential may overstate for reduction
-pairs — unmeasured); the softmax immunity mechanism was misstated (median output
-5.9e-4 is 6× *larger* than atol, not smaller — immunity is rel err 100× under rtol
-with outputs ≤ 1); no rate carried confidence limits and "five times in six" should
-be "six times in seven"; the "systems test once" attribution was never verified;
-the 3×-spread claim rests on one seed and shape per pair; d/floor is a ratio of
-maxima at possibly different elements.
-
-**Read.** Fourth, fifth, and sixth results to shrink under scrutiny, and every one
-moved away from the thesis again. The severity correction is the painful one: the
-strongest-sounding number in the project was a denominator artifact. What survives
-is unchanged in kind — the gate measures scale, the catch rate is sample- and
-scale-dependent — but every magnitude is now smaller and carries its conditions.
-
----
-
-## 2026-08-03 — why only `matmul_k_tiling` breaks: it is the atol, not the transformation
-
-**Setup.** `matmul_k_tiling` fails 14% under plain uniform sampling at fp32 while
-five other pairs fail 0%. Asked what is special about it. Measured rather than
-reasoned.
-
-**Outcome 1 — the failure is a single element.** In a failing trial, **1 of 4096**
-output elements trips the gate. Its `|b|` is 1.465e-01 against an overall median of
-1.105e+02 — **750× below typical**. Absolute error there is 1.422e-04, barely over
-`atol = 1e-4`. So `rtol·|b|` offers no protection at that element and only `atol`
-stands between the kernel and a failure.
-
-**Outcome 2 — failure rate tracks output element count** (K=512 fixed, uniform):
-
-| outputs | fail rate |
-|---|---|
-| 256 | 2% |
-| 1,024 | 2% |
-| 4,096 | 22% |
-| 16,384 | 48% |
-
-More output elements, more chances to draw one from the near-zero tail. Extreme-value
-statistics, not a property of the rewrite.
-
-**Outcome 3 — the relative errors are all the same. The absolute errors are not.**
-
-| pair | #outputs | typ \|out\| | rel err | abs err | vs atol |
-|---|---|---|---|---|---|
-| `softmax_online` | 65,536 | 5.90e-04 | 9.47e-07 | 2.79e-08 | 0.0× |
-| `layernorm_variance` | 65,536 | 8.52e-01 | 3.32e-07 | 4.29e-06 | 0.0× |
-| `scalar_past_matmul` | 4,096 | 6.75e-01 | 1.04e-06 | 4.05e-06 | 0.0× |
-| `split_reduction` | 64 | 2.28e+01 | 6.12e-07 | 3.81e-05 | 0.4× |
-| `reassociation` | 64 | 2.28e+01 | 7.35e-07 | 4.58e-05 | 0.5× |
-| **`matmul_k_tiling`** | 4,096 | 1.53e+01 | 8.65e-07 | **7.63e-05** | **0.8×** |
-
-**Every pair has relative error between 3.3e-07 and 1.0e-06** — within a factor of 3
-of each other. What differs is **output magnitude**, and absolute error is the
-product of the two. `matmul_k_tiling` sits at 0.8× atol, right on the boundary, which
-is exactly why it fails *stochastically* rather than never or always.
-
-**Outcome 4 — and it is K that puts it there.** Same transformation, same code, only
-K varies:
-
-| K | typ \|out\| | abs err | verdict |
-|---|---|---|---|
-| 128 | 7.8 | 1.34e-05 | under atol |
-| 512 | 15.3 | 7.63e-05 | under atol (0.8×) |
-| **2048** | 31.5 | **2.37e-04** | **OVER atol** |
-
-**Read — this is a better finding than the one it replaces.**
-
-`atol = 1e-4` is an absolute constant applied to tensors of arbitrary scale. A matmul
-output grows as σ²√K; a row-reduction output grows as σ√n — one power of σ slower.
-So the same rewrite passes at K=128 and fails at K=2048 **with nothing about its
-correctness having changed.** The gate is not measuring the transformation; it is
-measuring whether the numbers flowing through it happen to be large.
-
-Why each of the others survived, mechanically:
-
-- **`softmax_online`** — outputs are probabilities, magnitude ~1/n ≈ 5.9e-04. `atol`
-  is *larger than typical outputs*. Structurally immune, and no seeding could change
-  that.
-- **`layernorm_variance`** — outputs normalised to O(1) by construction. 25× under.
-- **`scalar_past_matmul`** — the α = 1/√K scaling shrinks the output to O(1). **The
-  transformation under test is what protects it.**
-- **`split_reduction` / `reassociation`** — magnitude 22.8, abs err ~4e-5, i.e. 0.4–0.5×
-  atol. Genuinely close, but only **64 output elements**, so almost no exposure to the
-  near-zero tail. Widen the output and they should start failing too.
-
-**The prediction this makes, and it is checkable.** Production LLM matmuls run
-K = 4096–16384. At K = 2048 a correct, ℝ-equivalent tiling already exceeds a fixed
-`atol = 1e-4`. So **a fixed absolute tolerance becomes progressively unusable as
-models scale**, for reasons entirely unrelated to whether the rewrite is sound. That
-is derived from measurement plus dimensional analysis rather than from anyone's code,
-which is what makes it safer ground than the claim retracted below.
-
----
-
-## 2026-08-03 — Phase 5 stress-tested: the seeds are 10σ out, and A1 mostly holds
-
-**Setup.** Asked how trustworthy the Phase 5 result is. Rather than argue it, measure
-it: how far outside the real activation distribution do the seeded inputs actually
-sit? The relevant statistic for reassociation is the **summation condition number**
-`Σ|xᵢ| / |Σxᵢ|`, and for the one-pass variance it is `μ²/E[x²]`. Both are computable
-on the Phase 3 fixtures.
-
-**Outcome — real rows vs seeded rows:**
-
-| source | cond p50 | cond p99 | cond max | cancel max |
-|---|---|---|---|---|
-| `resid_pre_ln_L5` (real) | 42.8 | 1,188 | 7,237 | 0.008 |
-| `post_ln_L5` (real) | 678.7 | 81,247 | **368,927** | 0.000 |
-| `attn_scores` (real) | 6.0 | 269 | 2,810 | 0.361 |
-| `uniform` (control) | 24.1 | 743 | 954 | 0.031 |
-| **`cancellation` (seed)** | **4.5e6** | 4.6e10 | **5.0e13** | 0.000 |
-| **`shifted` (seed)** | 1.0 | 1.0 | 1.0 | **1.000** |
-
-**`cancellation` sits +10.4σ from the real distribution on a log scale.** Its median
-row is ~600× worse-conditioned than the *worst* real row and ~100,000× worse than the
-median. My "seed the arrangement, not the magnitudes" defence does not survive
-contact with this: the arrangement is the entire mechanism, and it is nowhere near
-anything the model produces. `shifted` drives `μ²/E[x²]` to 1.000 where the most
-biased real tensor reaches 0.361.
-
-**Then the decisive test — real activations, unmodified, no seeding, at fp32:**
-
-| pair | real site | cond max | differential | gate |
-|---|---|---|---|---|
-| `split_reduction` | `post_ln_L5` | 368,927 | 7.77e-06 | **pass** |
-| `reassociation` | `post_ln_L5` | 368,927 | 8.58e-06 | **pass** |
-| `layernorm_variance` | `post_gelu_L5` | cancel 0.36 | 8.74e-07 | **pass** |
-
-**Everything passes, with an order of magnitude to spare.** Condition number rose
-**400×** from uniform (954 → 368,927) and the differential rose only **~11×**
-(7.19e-07 → 7.77e-06). The transformations are far more robust to real
-ill-conditioning than the seeded result suggested.
-
-I had also mislabelled `post_ln` as a well-conditioned "control" in the activation
-arm. For *summation*, it is the opposite: LayerNorm output is zero-mean by
-construction, so `Σx ≈ 0` and the condition number explodes. It is the worst real
-case, not the control — and it still passes.
-
-**Read. The previous entry's headline is too strong and is corrected here.**
-
-What I claimed: *C1 survives at fp32; uniform sampling is a null test.*
-
-What is actually supported:
-
-1. **A1 largely holds at fp32 for realistic inputs.** Every real activation site —
-   including the pathologically-conditioned-by-construction post-LayerNorm tensor —
-   passes with 10× headroom. The roadmap's third kill criterion is closer to firing
-   than C1 is to being established.
-2. **The seeded failures are real but require ~10σ arrangements.** They demonstrate
-   that these transformations *can* diverge by 1600×, not that they *do*. A numerical
-   analyst would predict divergence at condition number 1e6 without measuring; the
-   contribution is not the divergence, it is that the real distribution never gets
-   there.
-3. **One genuine exception survives intact: `matmul_k_tiling` fails 14% under plain
-   uniform sampling at fp32**, and Phase 4's single draw missed it. That is a real
-   failure at realistic inputs, found by the catch-rate design, and it is now the
-   strongest C1-supporting result in the project.
-4. **The conditioning measurement is itself a contribution, as an informative null.**
-   Real post-LayerNorm activations are 400× more ill-conditioned for summation than
-   uniform sampling produces — and the transformations absorb it. That is worth
-   reporting precisely because it is the opposite of what the framing predicted.
-
-**Method note.** This is the third time a result has moved after being stress-tested,
-and all three moved the same direction — away from the thesis. The pattern is now
-established enough to state as a finding about the project itself: every number that
-supported C1 shrank under scrutiny, and none that supported A1 did.
-
----
-
-## 2026-08-03 — RETRACTION of the "100× gap" claim below
-
-**The entry immediately following this one is wrong in its central claim, and the
-commit that carries it (`3adb846`) overstates the same thing. Both are left in place
-rather than edited, and corrected here.**
-
-The claim was: *the literature states 1e-4, the code shipping reduced-precision
-kernels uses 1e-2, a 100× undocumented gap.* Prompted to verify it properly — it is
-a critique of named people's published work — I checked what I had actually compared.
-Four problems, any one of which sinks it:
-
-1. **Different groups.** Axon is Kothari, Zhu, Kroening, Sung — **AWS / UIUC**.
-   Mirage is Wu, Jia — **CMU**. I compared one group's stated threshold against
-   another group's code and called it a gap. There is no "the literature says X but
-   the code says Y" here; there are two systems.
-2. **Mirage's paper states no float tolerance at all.** Searched directly: the only
-   "threshold" in it is the PIT error probability δ, a finite-field bound. So there
-   was never a 1e-4 in Mirage to contradict.
-3. **Different subsystems.** Every one of the 66 `1e-2` sites is under
-   `tests/runtime_python/` or `demo/` — MoE linear, MLA attention, fp8 linear,
-   warp-specialised matmul, conv. These are **hand-written MPK runtime kernels checked
-   against PyTorch references**. Not one is the superoptimizer validating search
-   output.
-4. **Different artifact.** The repo at HEAD is **MPK** (Mirage Persistent Kernel),
-   latest commit 2026-07-28 — the megakernel successor, not the OSDI '25
-   superoptimizer the paper describes.
-
-**What is actually true, verified:**
-
-- `src/search/verification/` contains `probabilistic_verifier.cc` and
-  `formal_verifier.cc` and **no float tolerance anywhere** in `src`/`include`.
-  Mirage's equivalence check is exact and finite-field, exactly as the paper says.
-  Mirage is *cleaner* than I implied — it does not run a sloppy float check, it runs
-  an exact algebraic one and never claims otherwise.
-- The superoptimizer benchmark scripts (`benchmark/*.py`) call `graph.superoptimize()`,
-  run the result, and time it. **No correctness comparison, and no tolerance anywhere
-  in `benchmark/`.**
-- Axon states `rtol = atol = 1e-4` on FP32. Verified verbatim.
-- Prism states no tolerance, and its benchmarks are entirely half-precision. Verified.
-
-**What survives, stated narrowly.** The three systems' float-validation stories
-differ and none is quantified: Axon states 1e-4 at FP32; Prism states nothing while
-benchmarking at half precision; Mirage's superoptimizer path has no float check at
-all because its verification is exact by construction. The MPK runtime tests landing
-on 1e-2 for bf16 kernels is *corroborating context* — evidence about what
-practitioners accept for bf16 kernels generally, and it does sit right at our
-measured bf16 differential range of 4.55e-03 to 1.10e-02 — but it is a different
-subsystem and cannot be cited as a contradiction of anything.
-
-**What I should have done.** Checked the authorship, the subsystem, and the artifact
-identity *before* asserting a 100× gap about named researchers. The census itself was
-accurate; every inference I drew from it was not. This is the second absence-shaped
-error in the project after the `grep` one, and the lesson is the same: a number that
-supports the thesis deserves more scrutiny than one that doesn't, not less.
-
----
-
-## 2026-08-03 — [RETRACTED, see above] what the field's code uses
-
-**Setup.** Chasing the loose end under the sharpest claim: does Prism's artifact
-state a validation tolerance? Prism has **no artifact link in the paper** — every
-GitHub URL in it cites someone else's project. But Prism's author list is Mengdi Wu,
-Xiaoyu Jiang, Oded Padon, **Zhihao Jia** — CMU, i.e. the *same group as Mirage*. And
-Mirage is public. So the question becomes answerable from the same lab's shipping
-code.
-
-**Prediction.** I expected to find either no tolerance at all, or something in the
-1e-3 range, and to have to argue from absence.
-
-**Outcome — census of every numeric tolerance in `mirage-project/mirage`:**
-
-| value | sites |
-|---|---|
-| **1e-2** | **66** |
-| 2e-2 | 6 |
-| 1e-1 | 6 |
-| 1e-4 | 4 |
-| 1e-3 | 3 |
-| 1e-5 / 2e-3 / 1e-6 | 4 |
-
-Roughly **78 of ~90 genuine sites are 1e-2 or looser.** The dtype context: bfloat16
-appears in 87 files, float16 in 113. Every `rtol = atol = 1e-2` test I checked
-individually is bf16 — `test_mla_decode`, `test_matmul_ws_mpk`,
-`test_matmul_splitk`, `test_moe_linear`, `test_allreduce` (`TestConfig.RTOL = 1e-2`,
-`dtype=torch.bfloat16`).
-
-And one comment says it outright. In `demo/demo_hopper/main.py`, an fp8
-weight-only-quantised model is checked at `atol=1e-1`, above a line recording that
-`atol=1e-2` **failed**.
-
-**Read. This is the result, and it reframes the project.**
-
-The literature states **one** tolerance: Axon's `rtol = atol = 1e-4`, explicitly *on
-FP32*. The code that actually ships reduced-precision kernels uses **1e-2** — a
-**100× gap** — and 1e-1 when precision drops further. Prism states nothing at all
-while benchmarking entirely in half precision. Nobody documents the gap, justifies
-the constant, or gives a method for choosing it. It is folklore, arrived at by
-loosening until tests pass.
-
-**Our floor measurements explain the folklore.** Measured bf16 differentials for the
-matmul-shaped pairs — which is what Mirage's bf16 tests exercise — are **4.55e-03 to
-1.10e-02**. The empirically-chosen 1e-2 sits exactly at the top of that range. The
-constant is not arbitrary; it is the precision floor, discovered by trial and error
-and never written down. The fp8 case is the same story one precision lower: floor
-rises, 1e-2 fails, 1e-1 gets adopted.
-
-**This also disposes of the strongest objection to the fp16 work.** The complaint
-would have been that applying Axon's FP32 number at bf16 is a scope violation and a
-strawman. It is — and we no longer need to. The finding is not "1e-4 fails at bf16."
-It is: *practice already abandoned 1e-4 without saying so, landed on a number that
-matches the precision floor, and has no principled account of why.* We can supply
-that account.
-
-The contribution turns constructive. Not "the field's gate is wrong" but "here is
-what your empirical constant is measuring, and here is how to derive it instead of
-tuning it."
-
-**Caveat to carry.** These are Mirage's *test and demo* tolerances, not necessarily
-the internal search-time verification threshold. Mirage's search-time equivalence is
-the finite-field PIT, which has no float tolerance at all — so these are exactly the
-end-of-pipeline float checks that stand between a generated kernel and a user, which
-is the thing under study. But the distinction should be stated, not blurred.
-
----
-
-## 2026-08-03 — Phase 5, seeded inputs (prediction)
-
-**Setup.** The decisive experiment. At fp32 the floor is ~1e-6 against a 1e-4 gate,
-so C1 needs ~100× amplification, and neither `randn` (Phase 4 synthetic) nor real
-activations (Phase 4 activation arm) supply it. Seeding is the only route left.
-
-The credibility constraint is what makes this hard: anything can be broken by inputs
-nobody would feed it. `fpgap/seeds.py` answers it by **seeding the arrangement, not
-the magnitudes** — every generated value is clamped into `REAL_BOX = (-22.051,
-21.328)`, the widest range observed across the Phase 3 fixtures. No denormals, no
-near-overflow. What is adversarial is which magnitudes sit next to each other and in
-what order they accumulate. A row of values the model actually produced, permuted
-into an order it happens not to produce, is still realistic.
-
-Five strategies, `uniform` as the control (it is what the field samples): plus
-`wide_range`, `cancellation`, `dynamic_mix`, `shifted`. 100 trials each, fp32.
-
-**Prediction.**
-
-1. **`uniform` catches nothing — 0% on every pair.** Phase 4 already established
-   this; if it is nonzero the two experiments contradict each other.
-2. **`cancellation` breaks the reduction pairs, >80%.** Summation condition number is
-   `Σ|xᵢ| / |Σxᵢ|`. The strategy drives the denominator to ~n·1e-4 while the numerator
-   stays ~n·10, giving ~1e5. Against fp32 eps 1.2e-7 that is ~1.2e-2 — two orders over
-   the gate.
-3. **`shifted` breaks `layernorm_variance` at ~100%.** It drives μ²/E[x²] to ≈0.99999,
-   so `E[x²] − μ²` retains ~8.6e-6 of its magnitude and amplifies fp32 eps to ~1.4e-2.
-   This is the pair's known failure mode, and the one zero-mean activations never
-   reach.
-4. **`dynamic_mix` is weaker than I would like at fp32** — maybe 20–60%. One value at
-   ~19 among 1024 at ~1e-4: an ulp of 19 in fp32 is ~1.9e-6, so the small addends sit
-   *above* the stagnation threshold and are not fully lost. It should bite much harder
-   at fp16/bf16.
-5. **Therefore C1 survives at fp32 under adversarial-but-realistic inputs**, and the
-   headline becomes the *gap between catch rates* — near 0% for what everyone samples
-   against a high rate for seeded. That is the Ruler §6.2 result transferred.
-
-If prediction 5 fails — if seeded sampling also finds nothing at fp32 — then A1 wins
-decisively, the roadmap's third kill criterion fires, and this is a shorter paper
-that says the field's shortcut is empirically justified. That outcome is stated here
-in advance so it cannot be reframed later as a disappointment.
-
-**Outcome.** 100 trials × 6 pairs × 5 strategies at fp32, 23 s.
-
-**Catch rate — fraction of trials where the Axon gate fails:**
-
-| pair | uniform | wide_range | cancellation | dynamic_mix | shifted |
-|---|---|---|---|---|---|
-| `split_reduction` | 0% | 0% | **100%** | 0% | 0% |
-| `reassociation` | 0% | 0% | **100%** | 0% | 0% |
-| `layernorm_variance` | 0% | 0% | 0% | 0% | **100%** |
-| `softmax_online` | 0% | 0% | 0% | 0% | 0% |
-| `scalar_past_matmul` | 0% | 0% | **28%** | 0% | 0% |
-| `matmul_k_tiling` | **14%** | 31% | **100%** | 0% | 0% |
-
-Worst differential observed: **1.62e-01** (`split_reduction`, cancellation) and
-**2.09e-01** (`layernorm_variance`, shifted) — **1600× and 2100× the gate**, at fp32,
-on inputs bounded inside the real activation range.
-
-| Prediction | Result |
-|---|---|
-| 1. `uniform` catches nothing, 0% everywhere | **almost** — 0% on five pairs, but **14% on `matmul_k_tiling`** |
-| 2. `cancellation` breaks reductions >80% | **correct** — 100% |
-| 3. `shifted` breaks `layernorm_variance` ~100% | **correct** — exactly 100% |
-| 4. `dynamic_mix` 20–60% | **wrong** — 0% everywhere |
-| 5. C1 survives at fp32 | **correct** |
-
-**Prediction 1 was wrong in the most useful way.** `matmul_k_tiling` fails the gate
-**14% of the time under ordinary uniform sampling** at fp32. Phase 4 marked it as
-passing — because Phase 4 drew *one* sample per cell and had an 86% chance of missing
-it. That is not a contradiction between the two experiments; it is precisely the
-phenomenon T3 was written to measure, showing up unprompted. A single-draw validation,
-which is what these systems run, misses a real failure five times in six.
-
-Mechanism: `scale_rel` stays ~1e-6, but the gate is **elementwise**. With output
-magnitudes ~500 at K=512, a 1e-6 relative error is ~5e-4 in absolute terms, which
-clears `atol = 1e-4` on elements whose own magnitude is small. The scale-relative
-summary and the elementwise gate genuinely disagree, and only the gate is what the
-field runs.
-
-**Prediction 4 failed outright.** `dynamic_mix` reads 0% everywhere. The ulp
-reasoning was right but the conclusion was not: one value at ~19 among 1024 at ~1e-4
-leaves the small addends above fp32's stagnation threshold, so no order-dependence
-appears. It should bite at fp16/bf16 and does nothing here.
-
-**`softmax_online` is immune — 0% under every strategy.** The max-subtraction is a
-stabilisation, so both sides are well-conditioned by construction; the `hazard` field
-in the corpus predicted a null here and it held. The irony is worth stating in the
-writeup: **the one transformation Mirage cannot verify** (more than one `exp` on a
-path leaves the Lax fragment) **and Axon conservatively rejects** (uninterpreted
-`exp`) **is the most numerically robust pair in the corpus.** The verification
-machinery is most conservative exactly where it needs to be least.
-
-**Read — this is the C1 result.** What the field samples finds nothing on five of six
-pairs. Adversarial-but-realistic seeding finds failures at 100% on four of them, at
-magnitudes 1600–2100× the gate, at fp32, using only values a trained model produced.
-That is Ruler §6.2 transferred to floating point: uniform sampling is not a weak test
-of these transformations, it is a **null** test of them.
-
-**The limitation a reviewer will press, stated first.** We have shown the *values* are
-realistic — bounded by the observed activation range. We have **not** shown the
-*arrangements* occur. A row engineered so its terms nearly cancel is made of ordinary
-numbers in an extraordinary order, and nothing here establishes that a real model
-emits such rows. So the honest claim is conditional: *if* an input distribution
-reaches these arrangements, the transformations fail by three orders of magnitude and
-uniform sampling will not warn you. Establishing how often real workloads reach them
-is a different experiment, and not one this project has run.
-
----
-
-## 2026-08-03 — Phase 4 activation arm, with a shape-matched control
-
-**Setup.** The corpus against the Phase 3 fixtures — 24 cells. Each pair is fed the
-tensor the corresponding real kernel would actually see: `layernorm_variance` gets
-the residual stream *entering* LayerNorm, `softmax_online` gets pre-softmax attention
-scores, the matmul pairs get activation @ activation (which is what Q·Kᵀ is), and the
-reductions are run on both the centred residual stream and the biased post-GELU
-tensor to separate distribution from shape.
-
-**A confound I nearly shipped.** Comparing these cells against the synthetic sweep
-directly would confound distribution with shape — the fixtures have different column
-counts (384, 1536, 256) than the synthetic shape classes, and reduction error grows
-with row length. So the comparison is against **randn at the identical shapes**.
-Without that control the whole real-vs-synthetic question is unanswerable.
-
-**Prediction.** Given the fixture statistics (residual-stream row cancellation max
-0.0158), real activations behave essentially like `randn` at fp32, and no cell flips
-its verdict.
-
-**Outcome.** fp32: **8/8 pass.** fp16/bf16: **16/16 fail.** No verdict differs from
-the synthetic arm. The `d/floor` three-class structure reproduces: reductions
-0.95–1.28, matmul pairs 1.91–2.51, `layernorm_variance` 0.28–0.81.
-
-Distribution effect with shape pinned (floor ratio, real ÷ randn):
-
-| site | fp16 | bf16 |
-|---|---|---|
-| `resid_pre_ln` (centred) | 0.96 | 1.49 |
-| `post_gelu` (biased) | **2.33** | **3.58** |
-| `attn_scores` | **3.18** | 0.80 |
-| activation @ activation (matmul) | 0.71–1.11 | 0.73–1.11 |
-
-**Read.** The roadmap's hypothesis — *the field validates on synthetic inputs and
-ships on real ones* — is **partially supported, and the honest version is modest**.
-Real activations do produce more error than `randn` at matched shape, but only at
-the biased sites, and only by **2.3–3.6×**. Centred sites are indistinguishable
-(0.96–1.49). No cell changes verdict, and `d/floor` is stable across distributions
-(reductions 0.98–1.28 real vs 1.01–1.15 randn), so the *transformation's* behaviour
-does not depend on the distribution — only the floor moves under it.
-
-Two cells go the other way and are worth recording rather than burying:
-`matmul_k_tiling`/fp16 has `d/floor` 2.49 on real activations against **4.01** on
-randn, and `softmax_online`/fp16 reads 0.63 against 1.31. For those, synthetic inputs
-are the *more* adversarial choice.
-
-So "validate on randn, ship on real" is a real effect at the ~3× level, not the
-orders-of-magnitude effect the framing invites. Stated that way it is still worth
-reporting — a 3.6× underestimate of the floor is exactly the size of gap that gets
-absorbed into a hand-tuned tolerance without anyone noticing.
-
----
-
-## 2026-08-03 — Phase 4 synthetic arm (outcome, continued)
-
-**Read.** At fp32 with synthetic inputs, **A1 holds cleanly** — every pair passes
-with ~2 orders of headroom and nothing approaches T1. Whether C1 survives at fp32
-now rests entirely on Phase 5 seeding, exactly as predicted when the gate was
-corrected. At reduced precision the interesting quantity is not the gate at all but
-`d/floor`, because 36/36 failures where two-thirds of the corpus sits at
-`d/floor ≈ 1` is a fact about the tolerance, not about the transformations.
-
----
+- Predictions: outputs not bit-identical across machines; statistics match; GPU near the fp32-accumulate model.
+- Outcome: the local half ran; the A10 stopped answering before the remote half. CPU matmul agrees with fp32-accumulate-then-round on 99.4% (fp16) and 99.96% (bf16) of elements at 512x4096x512.
+- Read: CPU narrow matmul is fp32 accumulation in a blocked order. The earlier "CPU accumulates bf16 in bf16" line held only for elementwise adds. The platforms agreed because they run nearly the same computation.
+- Checkpoint accounting: gpt.pt existed only on the instance. The committed fixture stays canonical; regeneration requires retraining and is equivalent, not bit-identical. AUDIT step 11.
