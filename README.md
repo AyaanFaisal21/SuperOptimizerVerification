@@ -109,6 +109,12 @@ whose seeded inputs sit 10.4 sigma outside the real distribution and whose
 violations are near 2x tolerance, not the 1600x first reported.
 Details: [`ERRATA.md`](ERRATA.md).
 
+## AI use disclosure
+
+This project was developed with AI assistance (Claude, Anthropic): code, measurements, and drafts.
+The author directed the work and reviewed and verified the methods, numbers, and claims.
+That review process is itself public: errors it caught are in [`ERRATA.md`](ERRATA.md), and the dated record is in [`NOTEBOOK.md`](NOTEBOOK.md).
+
 ## License
 
 MIT
