@@ -8,6 +8,15 @@ This repo measures that distance.
 The claim under test is [`CLAIM.md`](CLAIM.md).
 It was registered 2026-08-03, with thresholds fixed before any measurement code.
 
+## AI use
+
+AI tools (Claude) assisted with code, measurements, and documentation. The
+developer directed, reviewed, and verified all work. No measured number comes
+from a model: every result comes from the instruments in `fpgap/` and `tools/`,
+gated by pre-registered thresholds ([`CLAIM.md`](CLAIM.md)), a float64 reference
+validated against 50-digit arithmetic, a negative control, and raw per-cell
+records committed in [`results/`](results/).
+
 ## Reading order
 
 | File | What it is |
@@ -108,12 +117,6 @@ a "100x tolerance gap" built on a category error, and "C1 survives at fp32,"
 whose seeded inputs sit 10.4 sigma outside the real distribution and whose
 violations are near 2x tolerance, not the 1600x first reported.
 Details: [`ERRATA.md`](ERRATA.md).
-
-## AI use disclosure
-
-This project was developed with AI assistance (Claude, Anthropic): code, measurements, and drafts.
-The author directed the work and reviewed and verified the methods, numbers, and claims.
-That review process is itself public: errors it caught are in [`ERRATA.md`](ERRATA.md), and the dated record is in [`NOTEBOOK.md`](NOTEBOOK.md).
 
 ## License
 
