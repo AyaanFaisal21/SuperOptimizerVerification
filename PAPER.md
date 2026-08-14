@@ -1,6 +1,7 @@
 # Characterizing Floating-Point Validation Rules for Tensor Superoptimization
 
-Ayaan Faisal. Draft of 2026-08-08 (rev. 3, after external reviews 1 and 2).
+Ayaan Faisal. Working draft of 2026-08-14 (toward rev. 4: corrections from
+external review 3, a full-text re-verification of every reference).
 Artifact: this repository.
 
 ## Abstract
@@ -13,8 +14,8 @@ inputs, elementwise, within `|g_i - b_i| <= atol + rtol*|b_i|`. Axon states
 without threshold or protocol. We characterize this validation stage as a
 measurement problem: what does its verdict depend on, and what would need to
 be reported for the verdict to be interpretable? We measure a representative
-rule on six rewrites that are algebraic identities over the reals and sixteen
-injected bugs spanning float64 divergences from 4.1e-6 to 8.2e-1, across
+rule on six rewrites that are algebraic identities over the reals and
+eighteen injected bugs whose float64 divergences span 4.1e-6 to 8.2e-1, across
 contraction sizes, precisions, reference implementations, input scales, and
 draw counts, under a pre-registered protocol with dated amendments. Findings:
 (1) the rule's rejection of valid rewrites is governed by near-zero output
@@ -23,9 +24,9 @@ contraction widths of deployed models: at M=N=64 the valid tiled matmul is
 rejected on 0/100 draws at K=2048, 48/100 [38-58%] at K=4096, and 100/100
 [96-100%] at K=11008, the projection and MLP widths of Llama-2-7B; (2) a
 tolerance frontier over 64 (atol, rtol) points contains no separator: the
-optimum is Axon's own constant, which rejects no valid rewrite at unit scale
-yet passes a real eps-placement bug on every draw, so the miss is structural
-to the rule family, not a calibration error; (3) the verdict and even the
+minimum is a plateau containing Axon's own constant, which rejects no valid
+rewrite at unit scale yet passes a real eps-placement bug on every draw, so
+the miss is structural to the rule family, not a calibration error; (3) the verdict and even the
 direction of the accuracy comparison depend on the reference implementation:
 against sequential, tree, and `torch.sum` references, the same online-softmax
 candidate is 15x closer, 1.6x closer, and 1.6x farther from a float64 oracle,
@@ -46,9 +47,11 @@ program structure across millions of candidates, and the search selects for
 whatever passes the acceptance rule. Mirage, Prism, and Axon verify candidate
 equivalence over exact or idealized arithmetic (Section 2) and close the
 distance to the compiled floating-point kernel with a sampled comparison
-against a reference implementation. Each paper states this limitation. None
-reports enough about the sampled rule, reference, threshold, draw count,
-precision scope, for a reader to compute what it accepts or rejects.
+against a reference implementation. Axon and Mirage state this limitation;
+Prism does not discuss floating-point behavior at all, beyond noting that
+its benchmarks run at half precision. None reports enough about the sampled
+rule, reference, threshold, draw count, precision scope, for a reader to
+compute what it accepts or rejects.
 
 We treat that stage as an object of measurement. The question is not whether
 any system has shipped a wrong kernel (we find no evidence of that), but what
@@ -80,9 +83,9 @@ Contributions:
 
 1. A two-class corpus: six real-equivalent rewrites with per-system
    provenance (identities established symbolically; implementations validated
-   to 3.5e-15 against a 50-digit-validated float64 oracle), and sixteen
-   injected bugs whose float64 divergences form a severity continuum from
-   4.1e-6 to 8.2e-1.
+   to 3.5e-15 against a 50-digit-validated float64 oracle), and eighteen
+   injected bugs across six classes whose float64 divergences span 4.1e-6 to
+   8.2e-1, sixteen of which form the frontier's severity continuum.
 2. An instrument that reports, per cell, the reference's oracle error
    (floor), the candidate's oracle error (total), their disagreement
    (differential, what the rule tests), the direction ratio total/floor with
@@ -101,14 +104,16 @@ Contributions:
 Mirage restricts search to its Lax fragment and probabilistically verifies
 candidate equivalence by evaluation over random finite-field values; the
 theorem bounds the probability of accepting a non-equivalent program, and
-the implementation runs a single trial with 16-bit primes, which the authors
+the implementation runs a single random test with primes p = 227 and q = 113,
+chosen so their product fits in 16-bit integers, which the authors
 acknowledge. Separately, Mirage v3 (section 5.2) states that floating-point
 tests filter muGraphs with "significant numerical errors"; threshold,
 reference, and draw protocol are unstated. Prism reasons over roughly 70
 hand-written axioms in an e-graph; the axioms are intended to be sound, a
 formal proof is stated to be beyond scope, and every generated kernel is
 subjected to random equivalence testing with no stated tolerance, in an
-evaluation that is entirely half-precision. Axon proves equivalence over the
+evaluation that is entirely half-precision; the paper does not otherwise
+discuss floating-point behavior. Axon proves equivalence over the
 reals with Z3 (1650x faster than Z3's floating-point theory on its own
 example) and validates compiled NKI kernels on Trainium against a reference
 implementation on random FP32 inputs at `rtol = atol = 1e-4`. Axon does not
@@ -139,13 +144,17 @@ the implementations; the float64 oracle is validated against 50-digit mpmath
 negative control establishes a nonzero instrument reading.
 
 **Mutant corpus (amended, registered before execution).** Six bug classes,
-parameterized into sixteen instances: dropped reduction elements (j in 1 to
-32), dropped contraction columns (j in 1 to 32), Bessel-style divisors
-(n minus j), eps added to the standard deviation instead of the variance
-(eps in 1e-5 to 1e-3), a missing online-softmax rescale, and a dropped
-K-tile. Float64 divergences span 4.1e-6 to 8.2e-1, overlapping the valid
-corpus's floating-point disagreement range, which is what makes the
-discrimination question nondegenerate.
+eighteen instances. Four classes parameterize into the sixteen instances the
+tolerance frontier sweeps: dropped reduction elements (j in {1, 2, 4, 8, 16,
+32}), dropped contraction columns (j in {1, 2, 8, 32}), Bessel-style
+divisors (n minus j, j in {1, 2, 8}), and eps added to the standard
+deviation instead of the variance (eps in 1e-5 to 1e-3). Two gross
+single-instance classes run in the detection arm only: a missing
+online-softmax rescale and a dropped K-tile. The implemented column grid is
+sparser than the registered {1..32} set; the deviation is recorded in the
+errata. Float64 divergences span 4.1e-6 (eps placement) to 8.2e-1 (missing
+rescale), overlapping the valid corpus's floating-point disagreement range,
+which is what makes the discrimination question nondegenerate.
 
 **Instrument.** Oracle: the reference computed in float64 on the same rounded
 inputs the test-precision run sees, excluding input quantization. Per cell:
@@ -183,18 +192,23 @@ paper criticizes; the corrected measurement moves the onset to K=4096 and
 is recorded in the errata.
 
 **F2 (amended). The tolerance frontier contains no separator, and the
-optimum is the published constant.** Over all 64 (atol, rtol) grid points
-from 1e-8 to 1e-1, with 50 draws per program: no point achieves zero
-valid-rewrite rejection and zero mutant miss. The minimum total error is at
-exactly (1e-4, 1e-4), Axon's published constant, with 0% valid rejection at
-unit scale and 6.2% mutant miss, which is precisely the eps-1e-5 bug evading
-all 50 of its draws (its worst violation profile, 6.8e-5, sits below every
-threshold that admits the valid corpus). Gross mutants are caught on every
-draw at every reasonable point. Two readings, both supported: the published
-constant is not miscalibrated, it is the optimum available to its rule
-family on this corpus; and the family is structurally unable to separate the
-classes, because a real bug's disagreement signature lies inside the
-disagreement range of valid rewrites. The bug's severity is input-dependent
+published constant sits on the optimum plateau.** Over all 64 (atol, rtol)
+grid points from 1e-8 to 1e-1, with 50 draws per program: no point achieves
+zero valid-rewrite rejection and zero mutant miss. The minimum total error,
+0% valid rejection at unit scale plus 6.25% mutant miss, is a three-point
+plateau: (1e-4, 1e-4), (1e-4, 1e-3), and (1e-4, 1e-2) tie, and no grid
+point beats them. Axon's published constant is one of the three, and atol
+is the binding coordinate, which is the near-zero-element mechanism
+restated: the decisive elements sit where the allowance is atol alone, so
+rtol barely moves the optimum. The 6.25% miss is precisely the eps-1e-5 bug
+evading all 50 of its draws (its worst violation profile, 6.8e-5, sits
+below every threshold that admits the valid corpus). Gross mutants are
+caught on every draw at every reasonable point. Two readings, both
+supported: the published constant is not miscalibrated, it is tied for the
+optimum available to its rule family on this corpus; and the family is
+structurally unable to separate the classes, because a real bug's
+disagreement signature lies inside the disagreement range of valid
+rewrites. The bug's severity is input-dependent
 (it grows as row variance approaches eps), so this is a statement at the
 measured input statistics, and an oracle-referenced check with a
 condition-aware budget could see it where the sampled rule cannot; whether a
@@ -235,8 +249,8 @@ own inputs by 3.95e-4 at fp16 and 3.10e-3 at bf16, at or above the 1e-4
 scale, and all 36 reduced-precision cells fail a 1e-4-class rule. The
 direction ratio shows the failures are dominated by reference and precision
 error rather than by the rewrites: against the sequential reference the
-reordering candidates are 8x to 50x closer to the oracle than the reference
-they fail against. Axon scopes its constant to FP32 explicitly; Prism's
+reordering candidates are 3x to 73x closer to the oracle than the reference
+they fail against (8x to 62x at the mlp shapes). Axon scopes its constant to FP32 explicitly; Prism's
 benchmarks are half-precision with no stated threshold; so this finding is
 a constraint on any future stated rule, not evidence that a system's actual
 criterion fails.
@@ -256,8 +270,10 @@ activation distribution.** Constructed cancellation inputs trip the rule on
 every draw, but their median row condition number is 4.5e6 against 42.8 for
 real rows (10.4 sigma on a log scale), and the elementwise violations are
 near 2x tolerance. Online softmax is immune under every strategy measured;
-it is also the transformation outside Mirage's Lax fragment and rejected by
-Axon's uninterpreted-function handling. Exceptional regimes (NaN, Inf,
+it is also the pair the verifiers handle worst, by our inference from their
+mechanisms: its running max is not a Lax operator, so Mirage partitions
+around it, and Axon's uninterpreted exp blocks the rescale identity;
+neither paper classifies the transformation itself. Exceptional regimes (NaN, Inf,
 subnormals, overflow) are not covered by our gaussian and activation inputs
 and remain open.
 
@@ -293,8 +309,8 @@ the natural next registered experiment, not a result of this paper.
 
 ## 6. Implications
 
-**For Axon.** Its constant is, on our corpus, the optimum of its rule
-family (F2), and the family still cannot separate the classes; its rule's
+**For Axon.** Its constant is, on our corpus, tied for the optimum of its
+rule family (F2), and the family still cannot separate the classes; its rule's
 verdict becomes shape-dependent at K=4096 for a system whose proofs are
 shape-generic (F1). What the measurements support reporting: the draw
 count, the reference implementation and its accumulation order, and an
@@ -355,8 +371,8 @@ applies the same scrutiny to correctness validation.
 ## 8. Conclusion
 
 Measured on a representative rule: rejection of a valid rewrite begins
-within the contraction widths of deployed 7B-class models; the best fixed
-tolerance on the corpus is the one already published, and it still passes a
+within the contraction widths of deployed 7B-class models; no fixed
+tolerance on the corpus beats the one already published, and it still passes a
 real bug on every draw; the verdict and the direction of the accuracy
 comparison move with an unspecified reference implementation; and the
 detection rate depends on scale and draw count that no paper reports. Real
@@ -375,7 +391,8 @@ OSDI 2025. arXiv:2405.05751 (v3).
 Programs. arXiv:2604.15272.
 [3] Kothari, Zhu, Kroening, Sung. Axon: A Synthesizing Superoptimizer for
 Tensor Programs. arXiv:2606.26344.
-[4] TensorRight: Automated Verification of Tensor Graph Rewrites. POPL 2025.
+[4] Arora et al. TensorRight: Automated Verification of Tensor Graph
+Rewrites. PACMPL 9 (POPL), 2025.
 [5] Jia, Padon, Thomas, Warszawski, Zaharia, Aiken. TASO: Optimizing Deep
 Learning Computation with Automatic Generation of Graph Substitutions.
 SOSP 2019.
@@ -384,13 +401,13 @@ Distributed Training. arXiv:2506.09280.
 [7] Xie et al. Revealing Floating-Point Accumulation Orders in
 Software/Hardware Implementations (FPRev). USENIX ATC 2025.
 arXiv:2411.00442.
-[8] FTTN: Feature-Targeted Testing for Numerical Properties of NVIDIA and
-AMD Matrix Accelerators. arXiv:2403.00232.
+[8] Li et al. FTTN: Feature-Targeted Testing for Numerical Properties of
+NVIDIA and AMD Matrix Accelerators. arXiv:2403.00232.
 [9] Nandi, Willsey, et al. Rewrite Rule Inference Using Equality
 Saturation. OOPSLA 2021.
 [10] Panchekha, Sanchez-Stern, Wilcox, Tatlock. Automatically Improving
 Accuracy for Floating Point Expressions. PLDI 2015.
-[11] Menendez, Nagarakatte, Martin. Alive-FP: Automated Verification of
+[11] Menendez, Nagarakatte, Gupta. Alive-FP: Automated Verification of
 Floating Point Based Peephole Optimizations in LLVM. SAS 2016.
 [12] Notzli, Brown. LifeJacket: Verifying Precise Floating-Point
 Optimizations in LLVM. SOAP 2016.
