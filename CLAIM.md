@@ -340,3 +340,29 @@ absolute term makes the outcome scale-dependent — is unchanged, and the
 corrected onset lands on Llama-2-7B's contraction widths (4096 projection,
 11008 MLP) with no extrapolation. The frozen text above stays as written;
 this amendment is the forward pointer the house rules require.
+
+### 2026-08-14 — C1-C3 registered (before any run)
+
+**C1 — reference sensitivity with draws.** 100 draws per precision
+(fp16, bf16) at the mlp shape (512, 1024). Prediction: at fp16 the
+online-softmax candidate fails against the sequential reference and
+passes against the tree and torch.sum references on >=95% of draws
+each, and the floor ordering seq > tree > torch.sum holds on >=95% of
+draws. At bf16 the candidate fails against all three references on
+>=95% of draws: the precision floor alone exceeds a 1e-4-class gate.
+
+**C2 — detection at activation scale.** The six-mutant arm at
+sigma = 2.67. Prediction: the five gross mutants stay at >=95%
+detection; ln_eps_to_std still evades on >=95% of draws. LayerNorm
+normalizes scale away, and larger row variance shrinks the eps shift
+relative to std.
+
+**C3 — rejection across K and scale.** The valid K-tiled matmul,
+M=N=64, fp32, 100 draws per cell. Axis 1: K in {512, 1024, 2048, 4096}
+at sigma = 2.67. Axis 2: sigma in {0.5, 1.0, 2.0, 2.67, 4.0} at K=512
+(AUDIT step 5). Prediction: rejection is non-decreasing in K and in
+sigma; at sigma = 2.67, K = 2048 is rejected on >=95% of draws; the
+sigma sweep at K = 512 reads 0/100 at sigma <= 1.0 and contains the
+committed 14% at sigma = 2.67 inside its CI.
+
+No prior threshold moves.
