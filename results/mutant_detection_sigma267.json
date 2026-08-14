@@ -1,0 +1,61 @@
+{
+  "gate": 0.0001,
+  "draws": 100,
+  "sigma": 2.67,
+  "results": {
+    "mm_drop_last_tile": {
+      "f64_divergence": 0.3754150474108553,
+      "detection_rate": 1.0,
+      "ci": [
+        0.9630051925239981,
+        0.9999999999999999
+      ],
+      "note": "final K-tile omitted from the accumulation"
+    },
+    "mm_drop_last_col": {
+      "f64_divergence": 0.08746819808566053,
+      "detection_rate": 1.0,
+      "ci": [
+        0.9630051925239981,
+        0.9999999999999999
+      ],
+      "note": "off-by-one on the contraction bound"
+    },
+    "ln_bessel": {
+      "f64_divergence": 0.0003987956636956568,
+      "detection_rate": 1.0,
+      "ci": [
+        0.9630051925239981,
+        0.9999999999999999
+      ],
+      "note": "variance divided by n-1 instead of n"
+    },
+    "ln_eps_to_std": {
+      "f64_divergence": 2.462790641500268e-06,
+      "detection_rate": 0.0,
+      "ci": [
+        0.0,
+        0.03699480747600191
+      ],
+      "note": "eps added to std instead of variance"
+    },
+    "sm_no_rescale": {
+      "f64_divergence": 0.9528238698294973,
+      "detection_rate": 1.0,
+      "ci": [
+        0.9630051925239981,
+        0.9999999999999999
+      ],
+      "note": "online softmax missing the running-max correction"
+    },
+    "red_drop_last": {
+      "f64_divergence": 0.04146138854801727,
+      "detection_rate": 1.0,
+      "ci": [
+        0.9630051925239981,
+        0.9999999999999999
+      ],
+      "note": "reduction over n-1 elements"
+    }
+  }
+}
