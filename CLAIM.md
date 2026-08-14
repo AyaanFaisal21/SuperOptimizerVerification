@@ -217,6 +217,60 @@ few thousand such values exact in every order, so the reduction pairs reported a
 perfect `0.000e+00`. Passing for the wrong reason. `corpus._randn` now draws at
 float64 and rounds down; `test_float64_reference_actually_rounds` pins it.
 
+### 2026-08-08 — detection arm registered (before any mutant is run)
+
+**Trigger.** External review (agent-notes, 2026-08-08): the study measures false
+rejection of *valid* rewrites but never measures detection of *invalid* ones, so
+"catch rate" lacked its complement. This amendment registers the missing arm.
+
+**Question.** At the literal Axon gate (`rtol = atol = 1e-4`, fp32, vs the correct
+baseline), what fraction of random draws detects each of six plausible injected
+bugs (mutants): matmul dropped last tile; matmul dropped last column; LayerNorm
+Bessel divisor (n−1); LayerNorm eps added to std instead of variance; online
+softmax missing the rescale correction; reduction dropping its last element.
+
+**Metric.** Per-mutant per-draw detection rate over 100 independent draws, Wilson
+95% CI. A mutant must first differ from the correct baseline in float64 (sanity:
+it is a real bug, not a no-op).
+
+**Prediction (registered now).** Gross mutants (dropped tile/column/element,
+missing rescale, Bessel) are detected on ≥95% of draws. **At least one plausible
+mutant — eps-to-std — evades detection on ≥95% of draws**, because its output
+shift (~1e-5 relative at unit variance) sits below the gate. If that holds, the
+gate's failure is discrimination, not leniency: it rejects valid rewrites at
+large K while passing a real bug class.
+
+**No prior threshold moves.** T1–T4 and both gate definitions are untouched; this
+arm adds a complement, it does not reinterpret the existing one.
+
+### 2026-08-08 (second amendment) — frontier, K extension, decomposition, library reference
+
+**Trigger.** External review #2 (agent-notes). Registered before any of these run.
+
+**E1 — tolerance frontier.** Sweep `atol, rtol ∈ {1e-8 … 1e-1}` (log grid). Per
+grid point, over ≥50 draws per program: rejection rate on the valid corpus (six
+pairs at fp32 sweep shapes, plus the K=2048 tiling cell) and miss rate on a
+mutant severity continuum (drop-j elements/columns for j ∈ {1,2,4,8,16,32};
+divisor n−j for j ∈ {1,2,8}; eps-on-std for eps ∈ {1e-5,1e-4,1e-3}).
+**Prediction:** no grid point achieves zero valid-rejection and zero mutant-miss
+simultaneously. Specifically, any point that passes the K=2048 valid cell misses
+the eps-1e-5 mutant.
+
+**E2 — K extension.** K ∈ {2048, 4096, 11008} at M=N=64, unit scale, 100 draws.
+**Prediction:** failure rate ≥95% of draws at K=4096 and K=11008.
+
+**E3 — per-element decomposition.** At K=512, σ=2.67, 100 draws: per-element
+exceedance rate p̂ and observed tensor-level rate. **Prediction:** the iid model
+`1−(1−p̂)^4096` predicts the observed tensor rate within its 95% CI — i.e., the
+output-count effect is extreme-value aggregation, not a new numerical effect.
+
+**E4 — library reference.** Re-run the softmax reference comparison with
+`torch.sum` (a real library order) as the normalizer. **Prediction:** floor
+within 2× of the strided-tree reference's floor, same verdicts as tree.
+
+No prior threshold moves. Analyses in the paper are marked registered, amended,
+or exploratory per this file's history.
+
 ### 2026-08-03 — the gate compares against the baseline, not against truth
 
 **What changed.** The *Gate* defined above compares the variant against float64
