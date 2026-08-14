@@ -84,11 +84,17 @@ class Cell:
     seed: int
     device: str
 
-    floor: ErrorRecord          # baseline @ precision vs truth
-    total: ErrorRecord          # variant  @ precision vs truth   (as-registered)
+    floor: ErrorRecord          # baseline @ precision vs oracle
+    total: ErrorRecord          # variant  @ precision vs oracle   (as-registered)
     differential: ErrorRecord   # variant  vs baseline @ precision (the real gate)
 
+    # d_over_floor compares the DISAGREEMENT to the baseline's own error. it is
+    # direction-blind: a variant with zero error and a variant with 2x the
+    # baseline's error both read ~1 (external review 2026-08-08, point 3).
+    # acc_ratio = total/floor is the direction-aware quantity: <1 means the
+    # variant is closer to the oracle than the baseline is.
     d_over_floor: float
+    acc_ratio: float
 
     def verdict(self) -> dict:
         """the two gate readings and the two T1 readings, side by side.
@@ -162,6 +168,8 @@ def measure(
         differential=differential,
         d_over_floor=(differential.scale_rel / floor.scale_rel
                       if floor.scale_rel > 0 else float("inf")),
+        acc_ratio=(total.scale_rel / floor.scale_rel
+                   if floor.scale_rel > 0 else float("inf")),
     )
 
 
