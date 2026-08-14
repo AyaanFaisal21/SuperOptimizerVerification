@@ -1,7 +1,7 @@
 # Progress against the roadmap
 
 Tracks [`ROADMAP.md`](ROADMAP.md) phase by phase, against its own exit criteria.
-Deviations from the plan are recorded, not absorbed. Updated 2026-08-04.
+Deviations from the plan are recorded, not absorbed. Updated 2026-08-14.
 
 | Phase | Estimate | Status | Exit criterion |
 |---|---|---|---|
@@ -11,11 +11,12 @@ Deviations from the plan are recorded, not absorbed. Updated 2026-08-04.
 | 3 Realistic inputs | 2-3 days | Complete | Met: fixture and regeneration script committed |
 | 4 Main sweep | 4-6 days | Complete | Met: 54 + 24 + 16 cells on disk |
 | 5 Seeded inputs | 3-4 days | Complete | Met: catch rates, uniform vs seeded |
-| 6 Writeup | 5-7 days | Background only | Not met |
+| 6 Writeup | 5-7 days | Rev. 3 in revision toward rev. 4 | Not met: tex regeneration and the measure.md queue remain |
 
-Verdict summary. Neither C1 nor A1; see [`CLAIM.md`](CLAIM.md).
+Verdict summary. Neither C1 nor A1; see [`CLAIM.md`](CLAIM.md) and its 2026-08-14 amendment.
 A1 holds for real activation distributions: every real site passes with 10x headroom.
-A1 fails for shapes: `matmul_k_tiling` fails at K=2048 outright.
+A1 fails for shapes: the valid tiling is rejected on 48/100 draws at K=4096 and 100/100 at K=11008 (unit scale).
+The earlier "fails at K=2048 outright" used the wrong predicate. Retraction #4.
 Seeded violations are near 2x tolerance and sit 10.4 sigma outside the real distribution.
 The surviving C1 result: 14% [CI 9-22%] failure rate at activation input scale, missed 86% of the time by one draw.
 
@@ -74,7 +75,8 @@ The surviving C1 result: 14% [CI 9-22%] failure rate at activation input scale, 
 ## Phase 5: Seeded inputs
 
 - Met: `results/seeded_catch_rates.json`, 100 trials x 6 pairs x 5 strategies.
-- Seeded strategies trip the gate on 4 of 6 pairs at 100%. Elementwise violations are near 2x tolerance (ERRATA 5.2).
+- Seeded strategies trip the gate on 4 of 6 pairs at 100% [96-100%]. Elementwise violations are near 2x tolerance (ERRATA 5.2).
+- Other nonzero rates, with Wilson 95% CIs (AUDIT step 2): uniform on `matmul_k_tiling` 14% [9-22%]; wide_range on `matmul_k_tiling` 31% [23-41%]; cancellation on `scalar_past_matmul` 28% [20-38%]. All other cells read 0% [0-4%].
 - The seeds are not realistic: median seeded row condition 4.5e6 vs real 42.8, which is 10.4 sigma out on a log scale.
 - Control: the worst real site (post_ln, row condition 368,927) still passes at 7.77e-06. Condition rose 400x; error rose 11x.
 - Phase 5 shows the transformations can diverge, not that they do.
@@ -87,12 +89,21 @@ factual error (Mirage, ERRATA 1.7), one analysis error (d/floor, ERRATA 2), and
 motivated two new measurements: the tree-reference re-run (AUDIT step 3) and the
 mutant detection arm (AUDIT step 12, registered in CLAIM before running).
 
-1. Background: drafted.
-2. Method: drafted, revised per review.
-3. Results: drafted, revised per review; detection arm added.
-4. Threats to validity: list rebuilt. Now: seeds 10.4 sigma from real; one small model; torch reimplementations, not the systems' emitted kernels; no end-model evidence; seq baseline vs the field's tree references (AUDIT step 3).
-5. What it means: not started.
-6. Related work: citation spine exists; add the FP-verification line (Flocq, Gappa, FPTaylor, Herbie).
+Review #2 (2026-08-08) motivated the frontier, the K extension, the
+decomposition, and the library-reference runs (E1-E4). Review #3 (2026-08-14)
+re-verified every reference against its full text; its corrections are in
+ERRATA §2 and the NOTEBOOK entry of that date. The paper stands at rev. 3,
+corrected in PAPER.md toward rev. 4; the tex regeneration is pending the
+measure.md queue.
+
+1. Background: drafted; Prism limitation sentence corrected (review #3).
+2. Method: drafted, revised per reviews; mutant bookkeeping corrected.
+3. Results: drafted; detection arm, frontier, and K extension added; F2
+   restated as a plateau, F5 range recomputed (review #3).
+4. Threats to validity: list rebuilt in rev. 3.
+5. What it means: drafted (Implications, rev. 3).
+6. Related work: TASO, TTrace, FPRev, FTTN, NNSmith, Minotaur, SATIRE added
+   in rev. 3; citations swept against DBLP in review #3.
 
 ## Kill criteria
 
@@ -107,5 +118,6 @@ Guard note, written before any result: the Phase 1 fp32 sanity check (0.20% of e
 ## Open
 
 1. Deviation on record: the roadmap's "$0, no rental" line. The A10 was rented.
-2. AUDIT steps 2-6 and 9-11 remain. See [`AUDIT.md`](AUDIT.md).
-3. The strongest missing experiment: how often real workloads approach adverse arrangements. Not attempted here. A reviewer will ask.
+2. AUDIT steps 4 (GPU half), 5, 6, and 9-11 remain. Steps 3 and 12-14 closed 2026-08-08; step 2 closed 2026-08-14. Step 5 is C3 in [`measure.md`](measure.md).
+3. The measurement queue for the M3 is [`measure.md`](measure.md): P0 artifact completeness, C1-C3 registered extensions, P2 stretch items.
+4. The strongest missing experiment: how often real workloads approach adverse arrangements. Not attempted here. A reviewer will ask.

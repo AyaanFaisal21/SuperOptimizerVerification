@@ -88,7 +88,9 @@ It does not show element-level agreement.
 
 **Step 1.** Add the input scale to each catch-rate sentence. Status: **DONE** (this commit)
 
-**Step 2.** Add the 95% confidence limits to each rate. Use the Wilson method. Status: **DONE** for the headline rate; **OPEN** for the Phase 5 table
+**Step 2.** Add the 95% confidence limits to each rate. Use the Wilson method. Status: **DONE** (2026-08-14)
+The Phase 5 rates now carry Wilson CIs where they are quoted (PROGRESS Phase 5).
+The rev. 4 paper will carry them in its tables.
 
 **Step 3.** Change the base kernel to a tree kernel for the two reduction pairs.
 Measure the differentials again. Record the difference. Status: **DONE** (2026-08-08)
