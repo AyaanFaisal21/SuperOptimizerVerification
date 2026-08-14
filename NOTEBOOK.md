@@ -145,3 +145,40 @@ Entries are chronological. Full prose versions of all entries are preserved in g
   labels, Axon draw-count wording narrowed, prereg language marked
   registered/amended/exploratory, TASO/TTrace/FPRev/FTTN/NNSmith/Minotaur/SATIRE
   added. Prediction record now nine falsified by their own runs.
+
+## 2026-08-14: review #3; full-text re-verification of every reference
+
+- Scope: full text of Mirage v1/v2/v3 (diffed), Prism, and Axon; 14 secondary
+  citations checked against DBLP/ACM/USENIX/arXiv; every committed results file
+  recomputed; git history checked. Review by agent, verified against sources.
+- Confirmed verbatim: Axon §4.6 gate sentence (reference implementation,
+  rtol=atol=1e-4, FP32; draw count unstated; the 100 repetitions are timing).
+  Prism's one-clause random testing, no tolerance anywhere, fp16-only
+  evaluation. Mirage v3 §5.2 numerical-stability sentences, no protocol.
+  Every recomputable number in the paper matched the committed records.
+- Corrections applied (each in ERRATA §2; corpus, README, BACKGROUND, PAPER):
+  - Prism never states the FP limitation. "Each paper states this limitation"
+    was wrong for one of three. The corrected sentence is stronger.
+  - The Lax/softmax exclusion is our inference, and the mechanism is the
+    running max (not a Lax operator), not exp count. Mirage never classifies
+    softmax.
+  - layernorm_variance is not in Prism (RMSNorm only). Provenance narrowed to
+    Axon-in-principle plus cornfield's shipped kernel.
+  - The frontier optimum is a three-point plateau: (1e-4, {1e-4, 1e-3, 1e-2}).
+    "Exactly (1e-4, 1e-4)" was first-wins tie-breaking. atol is the binding
+    coordinate, which restates the near-zero-element mechanism.
+  - Mutant count: eighteen instances, sixteen on the frontier. The 8.2e-1
+    endpoint is the detection-arm rescale mutant. Column grid {1,2,8,32}
+    deviates from E1 as registered; ERRATA §6.
+  - F5's "8-50x" recomputed from committed records: 3-73x, 8-62x at mlp shapes.
+  - Mirage primes: p=227, q=113; the product fits 16 bits.
+  - Bibliography: Alive-FP third author is Gupta, not Martin.
+- Record note: the 2026-08-08 work was committed in one batch on 2026-08-14
+  with identical commit timestamps. Commit order preserves the register-then-run
+  sequence; wall-clock times do not corroborate it. Disclosed here; from this
+  entry on, work is committed when it is done.
+- Two review-#3 corrections move toward the thesis (Prism's silence; the wider
+  F5 range), the first such movement since registration. The rest are neutral
+  or narrowing. Still open from review #3: README/CLAIM/PROGRESS carry the
+  retracted K=2048 verdict pending the consistency pass; E2-E4 and the
+  tree-baseline runs dump no JSON; committed sweeps predate acc_ratio.
