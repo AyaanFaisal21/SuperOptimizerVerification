@@ -1,0 +1,85 @@
+{
+  "seed": "corpus.SEED (single draw)",
+  "rows": [
+    {
+      "section": "softmax_512x1024",
+      "precision": "fp16",
+      "case": "online vs seq reference (as in paper)",
+      "floor": 0.00893800944697284,
+      "total": 0.0006025312960431827,
+      "t_over_f": 0.06741224649826819,
+      "differential": 0.008841732979664015,
+      "gate_pass": false
+    },
+    {
+      "section": "softmax_512x1024",
+      "precision": "fp16",
+      "case": "online vs tree reference (this run)",
+      "floor": 0.0009692826593786455,
+      "total": 0.0006025312960431827,
+      "t_over_f": 0.6216259934222209,
+      "differential": 0.0008849557522123894,
+      "gate_pass": true
+    },
+    {
+      "section": "softmax_512x1024",
+      "precision": "bf16",
+      "case": "online vs seq reference (as in paper)",
+      "floor": 0.45525496734830095,
+      "total": 0.007374060438795908,
+      "t_over_f": 0.016197649597866442,
+      "differential": 0.32160804020100503,
+      "gate_pass": false
+    },
+    {
+      "section": "softmax_512x1024",
+      "precision": "bf16",
+      "case": "online vs tree reference (this run)",
+      "floor": 0.0038456435094502465,
+      "total": 0.007374060438795908,
+      "t_over_f": 1.917510143796471,
+      "differential": 0.007042253521126761,
+      "gate_pass": false
+    },
+    {
+      "section": "split_reduction_512x3072",
+      "precision": "fp16",
+      "case": "chunked vs seq reference",
+      "floor": 0.0156484735655063,
+      "total": 0.0018350214354408143,
+      "t_over_f": 0.11726520339247178,
+      "differential": 0.014223194748358862,
+      "gate_pass": false
+    },
+    {
+      "section": "split_reduction_512x3072",
+      "precision": "fp16",
+      "case": "chunked vs tree reference",
+      "floor": 0.0011136999016249755,
+      "total": 0.0018350214354408143,
+      "t_over_f": 1.647680342580056,
+      "differential": 0.0029411764705882353,
+      "gate_pass": false
+    },
+    {
+      "section": "split_reduction_512x3072",
+      "precision": "bf16",
+      "case": "chunked vs seq reference",
+      "floor": 0.119409102010435,
+      "total": 0.014370525434330773,
+      "t_over_f": 0.12034698521621033,
+      "differential": 0.12209302325581395,
+      "gate_pass": false
+    },
+    {
+      "section": "split_reduction_512x3072",
+      "precision": "bf16",
+      "case": "chunked vs tree reference",
+      "floor": 0.007326731469443463,
+      "total": 0.014370525434330773,
+      "t_over_f": 1.9613828477628588,
+      "differential": 0.01764705882352941,
+      "gate_pass": false
+    }
+  ]
+}
