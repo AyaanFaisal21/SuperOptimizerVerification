@@ -316,3 +316,27 @@ recorded per cell, along with `d/floor`. This is what separates "this precision 
 inaccurate" from "this transformation is inaccurate," and at reduced precision the
 distinction is the entire result: a differential that merely tracks the floor says
 nothing about the transformation.
+
+### 2026-08-14 — the verdict's K=2048 line is superseded (retraction #4)
+
+**What changed.** The verdict of 2026-08-04 (above) states that
+`matmul_k_tiling` "fails at K=2048 outright" and its table marks K=2048
+**fail**. That reading compared the maximum absolute difference against
+`atol` alone and ignored the `rtol` term — the quantity confusion this
+project itself criticizes. Under the literal elementwise rule the corrected
+result (E2, registered by the 2026-08-08 amendment before its run; 100 draws
+per point, M=N=64, unit scale) is:
+
+| K | rejected | 95% CI |
+|---|---|---|
+| 2048 | 0/100 | [0%, 4%] |
+| 4096 | 48/100 | [38%, 58%] |
+| 11008 | 100/100 | [96%, 100%] |
+
+Retraction #4, [`ERRATA.md`](ERRATA.md) §2.
+
+**What did not change.** No threshold moved. The verdict's mechanism — the
+absolute term makes the outcome scale-dependent — is unchanged, and the
+corrected onset lands on Llama-2-7B's contraction widths (4096 projection,
+11008 MLP) with no extrapolation. The frozen text above stays as written;
+this amendment is the forward pointer the house rules require.
