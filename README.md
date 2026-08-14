@@ -76,8 +76,10 @@ Each tool's docstring holds its run command.
 
 ## Status
 
-Phases 0-5 of 6 are complete. Only the writeup remains.
-Measured on an NVIDIA A10 (Ampere) and an Apple M3 Pro.
+Phases 0-5 of 6 are complete. The writeup is in revision after three reviews.
+Committed sweep records are from the Apple M3 Pro (CPU).
+The A10 (Ampere) re-verified corpus equivalence and characterised the precision flags.
+The open measurement queue is [`measure.md`](measure.md).
 
 ```bash
 python -m pytest tests/ -q                # phase 1 exit criteria
@@ -85,39 +87,47 @@ python tools/validate_reference.py        # float64 vs 50-digit truth
 python tools/run_sweep.py                 # 54-cell synthetic sweep
 python tools/run_sweep_activations.py     # real activations + controls
 python tools/run_seeded.py                # phase 5 catch rates
+python tools/run_mutants.py               # detection arm, six mutants
+python tools/run_frontier.py              # 64-point tolerance grid
+python tools/run_k_extension.py           # E2-E4: K sweep, decomposition, references
 ```
 
 ## Result
 
-Neither C1 nor A1. The dated verdict is in [`CLAIM.md`](CLAIM.md).
+Neither C1 nor A1. The dated verdict is in [`CLAIM.md`](CLAIM.md), with its 2026-08-14 amendment.
 
 The gate under test: pass if `|new - old| <= atol + rtol*|old|`, with `atol = rtol = 1e-4`.
 
-**Main finding: the constant `atol` makes the verdict depend on output scale, not on correctness.**
-The same valid rewrite, unchanged, at unit-scale inputs:
+**Main finding: the verdict depends on output shape and scale, not on correctness.**
+The same valid tiled matmul, unchanged, under the literal rule (M=N=64, unit scale, 100 draws per K):
 
-| K | max abs error | verdict |
+| K | rejected | 95% CI |
 |---|---|---|
-| 128 | 1.34e-05 | pass |
-| 512 | 7.63e-05 | pass, at 0.8x atol |
-| 2048 | 2.37e-04 | fail |
+| 2048 | 0/100 | [0%, 4%] |
+| 4096 | 48/100 | [38%, 58%] |
+| 11008 | 100/100 | [96%, 100%] |
 
+K = 4096 and 11008 are the projection and MLP contraction widths of Llama-2-7B.
+The failing elements sit near zero, where only `atol` protects them.
+Accumulated error grows with the reduction length; the element's own magnitude does not.
+At the measured activation scale (sigma 2.7) the onset moves left: K = 512 already fails on 14% of draws.
 Relative errors across all six pairs span a factor of 3.
 Absolute errors span four orders of magnitude, because output magnitudes do.
-Production LLM matmuls run K = 4096-16384, past the failure point.
 The fix costs nothing: a relative-only gate, or an `atol` scaled to the output.
+An earlier table here reported failure at K = 2048. Its predicate was wrong. Retraction #4, [`ERRATA.md`](ERRATA.md).
 
 Supporting results:
 
 - A failure on 14% of draws [CI 9-22%] at activation input scale (0/100 at unit scale) is missed 86% of the time by the single-draw validation this project itself ran in Phase 4.
-- The gate rejects more accurate kernels. Online softmax at fp16 is 15x closer to float64 truth than the reference it is compared against, and fails.
+- The verdict tracks the reference implementation, not accuracy. Against a sequential reference, online softmax at fp16 is 15x closer to float64 truth than the reference, and fails. Against a `torch.sum` reference it is 1.6x farther, and passes.
+- The tolerance grid has no separating point. No (atol, rtol) pair rejects zero valid rewrites and misses zero bugs. The published constant sits on the optimum plateau and still passes a real eps-placement bug on every draw.
 - Real activations are benign. Every real site passes with 10x headroom, including post-LayerNorm summation at row condition number 368,927.
 - At fp16 and bf16 the failures measure precision, not transformations: `d/floor` is near 1 for two-thirds of the corpus.
 
-Two claims were retracted during the work and are recorded, not removed:
-a "100x tolerance gap" built on a category error, and "C1 survives at fp32,"
-whose seeded inputs sit 10.4 sigma outside the real distribution and whose
-violations are near 2x tolerance, not the 1600x first reported.
+Claims retracted during the work are recorded, not removed:
+a "100x tolerance gap" built on a category error; "C1 survives at fp32,"
+whose seeded inputs sit 10.4 sigma outside the real distribution; a Mirage
+misreading from a stale paper version; and the K = 2048 verdict above.
 Details: [`ERRATA.md`](ERRATA.md).
 
 ## License
