@@ -23,6 +23,8 @@ A sampled `allclose` with no error bound is then a smoke test asked to hold back
 Mirage restricts search to the Lax fragment and partitions around other operators.
 Prism writes ~70 algebraic axioms by hand and disclaims a formal soundness proof.
 Axon uses the real theory because Z3's FP theory is 1650x slower on its own example.
+Mirage (v3, section 5.2) also employs floating-point tests to filter uGraphs with
+significant numerical errors. It states no threshold or protocol for those tests.
 
 ## The gap
 

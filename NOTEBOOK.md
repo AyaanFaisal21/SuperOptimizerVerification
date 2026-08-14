@@ -101,3 +101,47 @@ Entries are chronological. Full prose versions of all entries are preserved in g
 - Outcome: the local half ran; the A10 stopped answering before the remote half. CPU matmul agrees with fp32-accumulate-then-round on 99.4% (fp16) and 99.96% (bf16) of elements at 512x4096x512.
 - Read: CPU narrow matmul is fp32 accumulation in a blocked order. The earlier "CPU accumulates bf16 in bf16" line held only for elementwise adds. The platforms agreed because they run nearly the same computation.
 - Checkpoint accounting: gpt.pt existed only on the instance. The committed fixture stays canonical; regeneration requires retraining and is equivalent, not bit-identical. AUDIT step 11.
+
+## 2026-08-08: external review, two verifications, two new measurements
+
+- An external review of the paper draft found nine issues. Full text in agent-notes.
+- Verified point 1: Mirage v3 section 5.2 states FP filtering of uGraphs. Our PDF
+  was a stale revision with no such sentence. Retraction #3, ERRATA 1.7.
+- Verified point 3 in our own records: total/floor decouples from d/floor.
+  Reordering variants are 8-16x more accurate while d/floor reads ~1. The
+  d/floor interpretation is retracted; acc_ratio (total/floor) added to the harness.
+- Tree-reference run (prediction: 15x shrinks to <=2x; held): softmax fp16
+  floor 9.69e-04 vs online total 6.03e-04, ratio 0.62; bf16 ratio 1.92, direction
+  inverts. The seq-to-tree switch flips the fp16 gate verdict FAIL to pass.
+- Detection arm (registered in CLAIM before running; prediction held): five gross
+  mutants detected 100/100 [96%, 100%]. ln_eps_to_std, a real bug with f64
+  divergence 4.1e-06, evades 100/100 draws [0%, 4%]. Raw: results/mutant_detection.json.
+- Read: the gate fails a valid rewrite at K=2048 and passes a real bug. The
+  reviewer's reframing (validator discrimination) is now measured, not argued.
+
+## 2026-08-08: review #2; frontier, K extension, decomposition, library reference
+
+- External review #2 archived in agent-notes. TTrace (arXiv 2506.09280), FPRev
+  (ATC '25, 2411.00442), FTTN (2403.00232) verified and added to related work.
+  Nautilus, Propilot, Kernel Contracts left uncited pending verification.
+- E1 frontier (predicted: no separator; any point passing k2048 misses eps-1e-5):
+  half held. 0 separators in 64 points. But the optimum is exactly (1e-4, 1e-4):
+  0.0% valid rejection at unit scale, 6.2% mutant miss, all of it eps-1e-5.
+  The published constant is the optimum of its family; the family cannot separate.
+- E2 K extension (predicted: K=4096 and 11008 fail >=95%): half held, and it
+  falsified our own committed K=2048 result. Under the literal rule: 0/100 at
+  K=2048, 48/100 [38-58%] at K=4096, 100/100 at K=11008. The old "fails at
+  K=2048" compared max abs diff to atol alone, ignoring rtol. Retraction #4,
+  ERRATA. Corrected result lands exactly on Llama-2-7B widths; no extrapolation.
+- E3 decomposition (predicted: iid model inside CI): held. p_elem 3.42e-05,
+  predicted 13.1%, observed 14/100 [9-22%]. The output-count effect is
+  extreme-value aggregation.
+- E4 library reference (predicted: torch.sum within 2x of tree): falsified.
+  torch.sum floor 3.67e-04 vs tree 9.69e-04 at fp16 (2.6x better), consistent
+  with wider internal accumulation (FPRev). Online candidate now 1.6x WORSE
+  than the library reference at fp16. F3 is a three-reference result: 0.07,
+  0.62, 1.64.
+- Paper rebuilt as rev. 3: measurement-study identity, 2x2 semantic-vs-numerical
+  labels, Axon draw-count wording narrowed, prereg language marked
+  registered/amended/exploratory, TASO/TTrace/FPRev/FTTN/NNSmith/Minotaur/SATIRE
+  added. Prediction record now nine falsified by their own runs.

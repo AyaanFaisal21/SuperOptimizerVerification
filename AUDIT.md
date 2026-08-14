@@ -91,7 +91,12 @@ It does not show element-level agreement.
 **Step 2.** Add the 95% confidence limits to each rate. Use the Wilson method. Status: **DONE** for the headline rate; **OPEN** for the Phase 5 table
 
 **Step 3.** Change the base kernel to a tree kernel for the two reduction pairs.
-Measure the differentials again. Record the difference. Status: **OPEN**
+Measure the differentials again. Record the difference. Status: **DONE** (2026-08-08)
+With a tree reference, softmax's accuracy advantage falls from 15x to 1.6x at fp16.
+At bf16 the direction inverts: the online variant is 1.9x worse than the tree reference.
+The seq-to-tree switch flips the fp16 softmax gate verdict from FAIL to pass.
+Thus the verdict depends on the reference implementation. No paper states which
+reference order its validation uses.
 
 **Step 4.** Measure the matmul accumulator on the two computers.
 Compare the output tensors bit by bit. Then correct the platform text. Status: **PART DONE**
@@ -123,6 +128,22 @@ That computer does not answer.
 If a GPU computer is rented again, copy the checkpoint first.
 If the checkpoint is lost, train the model again with the same script.
 Then record that the new fixtures are equivalent, but not bit-equal. Status: **OPEN**
+
+**Step 12.** Add the detection arm: plausible wrong rewrites (mutants).
+Register the prediction first. Measure per-mutant detection rates. Status: **DONE** (2026-08-08)
+Five of six mutants are detected on 100% of draws [96%, 100%].
+One real bug (eps added to std, f64 divergence 4.1e-06) evades all 100 draws [0%, 4%].
+The gate rejects a valid rewrite at K=2048 and passes this bug. That is the
+discrimination result.
+
+**Step 13.** Sweep the tolerance grid. Find if any point separates the classes.
+Status: **DONE** (2026-08-08). 64 points, 0 separators. The optimum is the
+published constant (1e-4, 1e-4): 0% valid rejection, 6.2% mutant miss.
+
+**Step 14.** Measure K=4096 and K=11008 under the literal rule, 100 draws.
+Status: **DONE** (2026-08-08). 0/100 at K=2048, 48/100 at K=4096, 100/100 at
+K=11008. This corrected our own K=2048 claim, which used the wrong predicate.
+ERRATA has the retraction.
 
 Corrections go forward, never by edits to old entries. Full verbose versions of
 all documents stay in git history. This is the rule of the repo.

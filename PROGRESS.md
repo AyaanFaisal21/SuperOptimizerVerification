@@ -82,9 +82,14 @@ The surviving C1 result: 14% [CI 9-22%] failure rate at activation input scale, 
 
 ## Phase 6: Writeup
 
+External review received 2026-08-08 (archived in agent-notes). It found one
+factual error (Mirage, ERRATA 1.7), one analysis error (d/floor, ERRATA 2), and
+motivated two new measurements: the tree-reference re-run (AUDIT step 3) and the
+mutant detection arm (AUDIT step 12, registered in CLAIM before running).
+
 1. Background: drafted.
-2. Method: not started.
-3. Results: not started.
+2. Method: drafted, revised per review.
+3. Results: drafted, revised per review; detection arm added.
 4. Threats to validity: list rebuilt. Now: seeds 10.4 sigma from real; one small model; torch reimplementations, not the systems' emitted kernels; no end-model evidence; seq baseline vs the field's tree references (AUDIT step 3).
 5. What it means: not started.
 6. Related work: citation spine exists; add the FP-verification line (Flocq, Gappa, FPTaylor, Herbie).
