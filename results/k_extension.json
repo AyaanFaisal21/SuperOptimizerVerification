@@ -1,0 +1,85 @@
+{
+  "gate": 0.0001,
+  "draws": 100,
+  "shape": [
+    64,
+    64
+  ],
+  "e2": {
+    "2048": {
+      "fails": 0,
+      "draws": 100,
+      "ci": [
+        0.0,
+        0.03699480747600191
+      ]
+    },
+    "4096": {
+      "fails": 48,
+      "draws": 100,
+      "ci": [
+        0.38464384320080547,
+        0.5768359490982345
+      ]
+    },
+    "11008": {
+      "fails": 100,
+      "draws": 100,
+      "ci": [
+        0.9630051925239981,
+        0.9999999999999999
+      ]
+    }
+  },
+  "e3": {
+    "p_elem": 3.41796875e-05,
+    "elem_fail": 14,
+    "elem_total": 409600,
+    "tensor_fail": 14,
+    "draws": 100,
+    "ci": [
+      0.08526265754464905,
+      0.22137360383807236
+    ],
+    "iid_prediction": 0.1306438446534891,
+    "outputs_per_draw": 4096
+  },
+  "e4": [
+    {
+      "precision": "fp16",
+      "reference": "tree",
+      "floor": 0.0009692826593786455,
+      "online_total": 0.0006025312960431827,
+      "t_over_f": 0.6216259934222209,
+      "differential": 0.0008849557522123894,
+      "gate_pass": true
+    },
+    {
+      "precision": "fp16",
+      "reference": "torch.sum",
+      "floor": 0.0003674952006838165,
+      "online_total": 0.0006025312960431827,
+      "t_over_f": 1.6395623532552885,
+      "differential": 0.0006643046944198405,
+      "gate_pass": true
+    },
+    {
+      "precision": "bf16",
+      "reference": "tree",
+      "floor": 0.0038456435094502465,
+      "online_total": 0.007374060438795908,
+      "t_over_f": 1.917510143796471,
+      "differential": 0.007042253521126761,
+      "gate_pass": false
+    },
+    {
+      "precision": "bf16",
+      "reference": "torch.sum",
+      "floor": 0.0034392334666349285,
+      "online_total": 0.007374060438795908,
+      "t_over_f": 2.1440999892371244,
+      "differential": 0.007042253521126761,
+      "gate_pass": false
+    }
+  ]
+}
