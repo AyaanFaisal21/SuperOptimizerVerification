@@ -38,15 +38,17 @@ Any measured difference is floating-point behavior alone.
 | Pair | Identity | Accepted by | Source |
 |---|---|---|---|
 | `split_reduction` | `sum(x) == sum of chunk sums` | Prism, Mirage, MPK | Prism Table 1 |
-| `reassociation` | `(a+b)+c == a+(b+c)` | Prism, Mirage, Axon | Prism 4; Mirage 4.3 |
-| `scalar_past_matmul` | `(aA)B == a(AB)` | Axon, Prism | Axon 4.2 example |
-| `layernorm_variance` | `E[(x-u)^2] == E[x^2] - u^2` | Axon, Prism | cornfield ln_kernel |
-| `softmax_online` | naive == online softmax | Prism; Axon partial; Mirage cannot | TransformerOp attn_ext.cu |
-| `matmul_k_tiling` | full-K == tiled-K matmul | Prism, Axon, Mirage | Prism 5 |
+| `reassociation` | `(a+b)+c == a+(b+c)` | Prism, Mirage, Axon | Prism §4; Mirage §5 |
+| `scalar_past_matmul` | `(aA)B == a(AB)` | Axon, Prism | Axon §2/§5.1 example |
+| `layernorm_variance` | `E[(x-u)^2] == E[x^2] - u^2` | Axon (in principle) | cornfield ln_kernel |
+| `softmax_online` | naive == online softmax | Prism (chunked form); Axon, Mirage: no (inferred) | TransformerOp attn_ext.cu |
+| `matmul_k_tiling` | full-K == tiled-K matmul | Prism, Axon, Mirage | Prism §3.4/§5 |
 
-`softmax_online` is the one pair not accepted by all three systems.
-More than one `exp` per path leaves Mirage's Lax fragment.
-Axon rejects through uninterpreted `exp`. Prism accepts it by axiom.
+`softmax_online` is the one pair the three systems do not all accept.
+Prism verifies the chunked form, without the running max (its Fig. 2).
+The running max is not a Lax operator, so we infer Mirage partitions around this pair.
+Axon leaves `exp` uninterpreted, so we infer it rejects the rescale identity.
+Both inferences are ours. Neither paper classifies this transformation.
 
 Summation order is pinned in [`fpgap/accumulate.py`](fpgap/accumulate.py), never `torch.sum`.
 Torch's own reduction order differs by backend and would contaminate the measurement.

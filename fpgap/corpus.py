@@ -97,7 +97,8 @@ SPLIT_REDUCTION = Transformation(
     make_inputs=_split_inputs,
     shapes={"small": (64, 256), "mlp": (512, 3072), "attention": (256, 1024)},
     accepted_by=("Prism", "Mirage", "megakernel/MPK"),
-    citation="Prism §4 Table 1 (part/red/comb); Mirage §4.3 (A_eq); MPK SM-splitting",
+    citation="Prism §4 Table 1 (part/red/comb); Mirage §5 (verifier: finite-field "
+             "sums are order-exact, so any partition passes); MPK SM-splitting",
     justification=(
         "associativity of +. Prism's part/red/comb axioms rewrite a reduction into a "
         "partitioned reduction plus a combine; splitting a reduction across SMs is the "
@@ -121,7 +122,9 @@ REASSOCIATION = Transformation(
     make_inputs=_split_inputs,
     shapes={"small": (64, 256), "mlp": (512, 3072), "attention": (256, 1024)},
     accepted_by=("Prism", "Mirage", "Axon"),
-    citation="Prism §4 (associativity axioms); Mirage §4.3 (A_eq); Axon §4.2.1",
+    citation="Prism §4 Table 1 (compound parallelized-sum axioms -- reassociation "
+             "in substance; no bare add-associativity axiom is listed); Mirage §5 "
+             "(verifier: order-exact over finite fields); Axon §5.1 (algebra over R)",
     justification=(
         "associativity of + over R. every system in scope treats this as free; it is "
         "the base case the others are built on."
@@ -157,11 +160,14 @@ SCALAR_PAST_MATMUL = Transformation(
     make_inputs=_scale_inputs,
     shapes={"small": (32, 48, 32), "mlp": (256, 768, 3072), "attention": (256, 80, 256)},
     accepted_by=("Axon", "Prism"),
-    citation="Axon §4.2 (worked example); Prism §4 (scalar propagation)",
+    citation="Axon §2 and §5.1 (worked example: broadcast multiply past matmul; "
+             "a scalar is its simplest instance); Prism §4 Table 1 (matmul "
+             "commutes with mul)",
     justification=(
         "distributivity of scalar multiplication over the matmul contraction. Axon's "
-        "operator-propagation pass accepts this explicitly and uses it as its worked "
-        "example of a transformation proved sound over R."
+        "worked example propagates a broadcast [M,1] multiply (rsqrt) past matmul, "
+        "proved sound over R; the scalar case here is that rewrite's simplest "
+        "instance."
     ),
     identity="(alpha * A) @ B == alpha * (A @ B)",
     notes="the only pair whose difference is rounding *placement* rather than "
@@ -218,15 +224,21 @@ LAYERNORM_VARIANCE = Transformation(
     variant=_ln_one_pass,
     make_inputs=_ln_inputs,
     shapes={"small": (64, 256), "mlp": (512, 3072), "attention": (256, 768)},
-    accepted_by=("Axon", "Prism"),
-    citation="Axon §4.2.1 (per-operator semantics); Prism §5 (fusion as instantiation)",
+    accepted_by=("Axon (in principle: provable over R)",),
+    citation="Axon §5.1 (real-arithmetic solver; in-class, not a paper benchmark); "
+             "cornfield/autotune_layernorm.py (ships the one-pass form)",
     justification=(
         "E[(x-mu)^2] == E[x^2] - mu^2, an identity over R. the fused form needs one "
         "traversal instead of two, which is why a fusing compiler picks it."
     ),
     identity="sum((x - mean)^2)/n == sum(x^2)/n - mean^2",
     notes="reimplemented from cornfield/autotune_layernorm.py, which ships the "
-          "one-pass form and validates it at rtol=atol=1e-3.",
+          "one-pass form and validates it at rtol=atol=1e-3. Prism was removed "
+          "from this pair's provenance 2026-08-14 (ERRATA): its paper contains no "
+          "LayerNorm or variance rewrite -- every normalization it touches is "
+          "RMSNorm. Axon acceptance is class membership (the identity is "
+          "polynomial algebra its real-arithmetic solver covers), not a "
+          "demonstrated benchmark.",
     hazard="accumulation order is held identical (seq_sum on both sides) so the "
            "measured difference is the algebra alone. cancellation is governed by "
            "mean^2 / E[x^2]; `shift` exposes it and is 0 by default.",
@@ -271,9 +283,12 @@ SOFTMAX_ONLINE = Transformation(
     variant=_softmax_online,
     make_inputs=_split_inputs,
     shapes={"small": (64, 256), "mlp": (512, 1024), "attention": (256, 1024)},
-    accepted_by=("Prism", "Axon (partial)", "Mirage (non-Lax: partitioned around)"),
-    citation="Prism §4 (streaming/scan axioms); Axon §5.2 (exp uninterpreted); "
-             "Mirage §7 (non-Lax partitioning)",
+    accepted_by=("Prism (chunked form, its Fig. 2)",
+                 "Axon: rejected (our inference)",
+                 "Mirage: non-Lax, partitioned around (our inference)"),
+    citation="Prism §4 Fig. 2 (chunk-split softmax-matmul, no running max); "
+             "Axon §5.1-5.2 (exp uninterpreted); Mirage §5.1 Def. 5.1 + §1/§7 "
+             "(non-Lax partitioning)",
     justification=(
         "exp(a-m)*exp(m-m') == exp(a-m'), so a running max can be corrected rather "
         "than recomputed. FlashAttention's core identity."
@@ -281,11 +296,16 @@ SOFTMAX_ONLINE = Transformation(
     identity="softmax(x) == online_softmax(x)",
     notes=(
         "the one entry that is *not* uniformly accepted, which is why it is in the "
-        "corpus. Mirage cannot verify it -- more than one exp on an input->output "
-        "path puts it outside Lax, so Mirage partitions around it. Axon treats exp as "
-        "an uninterpreted function and conservatively rejects transformations through "
-        "it. Prism accepts it axiomatically. it therefore measures what the systems "
-        "give up, not only what they accept."
+        "corpus. Prism verifies the chunked form of this reordering -- per-chunk "
+        "exp sums recombined, no running max (its Fig. 2); this pair adds the "
+        "max-rescale, the stabilized form kernels ship. neither Mirage nor Axon "
+        "classifies the transformation, so the rest is our inference, stated as "
+        "such: the running max is not a Lax operator (Def. 5.1 admits multi-linear "
+        "ops, division, exp; §7 names ReLU the same way), so Mirage's verifier "
+        "does not cover it and partitions around it; Axon leaves exp uninterpreted "
+        "and conservatively rejects swaps through it, which blocks the rescale "
+        "identity. it therefore measures what the systems give up, not only what "
+        "they accept."
     ),
     hazard="the subtraction of a running max is a stabilization, so both sides are "
            "well-conditioned by construction; a null result here is meaningful.",
@@ -317,7 +337,8 @@ MATMUL_K_TILING = Transformation(
     make_inputs=_mm_inputs,
     shapes={"small": (32, 256, 32), "mlp": (256, 768, 3072), "attention": (256, 512, 256)},
     accepted_by=("Prism", "Axon", "Mirage"),
-    citation="Prism §5 (instantiation = tiling choice); Axon §4.2.1; Mirage §4.3",
+    citation="Prism §3.4 (mapping instantiation: which dim is loop-tiled) + §5 "
+             "(loop sizes tuned); Axon §5.1; Mirage §5",
     justification=(
         "the contraction over K is a reduction, so any partition of the K range "
         "recombines to the same value over R. choosing the partition is scheduling, "
