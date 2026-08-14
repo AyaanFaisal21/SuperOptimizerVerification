@@ -4,8 +4,9 @@ Every error and false claim, by failure mode. [`NOTEBOOK.md`](NOTEBOOK.md) holds
 
 Two patterns organise this file.
 The dangerous errors made results look better, not worse.
-And every claim that moved under scrutiny moved away from the thesis. Six for six.
-Two of the largest corrections came only after an external prompt to verify.
+Through review #2, every claim that moved under scrutiny moved away from the thesis: six for six.
+Review #3 (2026-08-14, §2 below) broke the pattern: two of its corrections strengthen the thesis, the rest are neutral.
+The largest corrections came only after an external prompt to verify.
 
 ## 1. Silent corruption: would have produced clean, wrong numbers
 
@@ -36,8 +37,19 @@ Two of the largest corrections came only after an external prompt to verify.
 | "Single-draw validation, which is what these systems run" | Regression (2026-08-08) | Audit finding 7 removed this; the paper draft reintroduced it. No paper states its FP draw count. Corrected to a protocol-underspecification finding |
 | "The valid tiling fails at K=2048" | Wrong predicate (2026-08-08 #2), retraction #4 | The K-sweep compared max abs diff against atol alone, ignoring the rtol term, the exact quantity confusion this paper criticizes. Under the literal elementwise rule: K=2048 rejected 0/100 [0-4%], K=4096 48/100 [38-58%], K=11008 100/100 [96-100%]. The corrected result is stronger and needs no extrapolation |
 | "torch.sum reference within 2x of the tree reference" | Falsified (2026-08-08 #2) | torch.sum floor is 2.6x better than our strided tree at fp16 (3.67e-04 vs 9.69e-04), consistent with wider internal accumulation. Verdicts matched |
+| "Each paper states this limitation" (rev. 3 intro) | Corrected (2026-08-14, review #3) | Prism's paper never mentions floating point. Only Axon and Mirage state the gap. The corrected sentence is stronger for the thesis |
+| "Online softmax is outside Lax because of more than one exp per path" | Corrected (2026-08-14) | Mirage never classifies softmax. Plain softmax has one exp per input-output path and appears to satisfy Def. 5.1. The defensible mechanism is the running max, which is not a Lax operator. Restated as our inference |
+| "layernorm_variance is accepted by Prism" | Retracted (2026-08-14) | Prism contains no LayerNorm and no variance rewrite. Every normalization it touches is RMSNorm |
+| "Prism accepts online softmax by axiom (streaming/scan axioms)" | Corrected (2026-08-14) | Prism verifies the chunked form without the running max (its Fig. 2). It has no streaming or scan axioms. The stabilized form is not in its paper |
+| "The frontier optimum is at exactly (1e-4, 1e-4)" | Imprecise (2026-08-14) | Three-way tie with (1e-4, 1e-3) and (1e-4, 1e-2) at 0% + 6.25% in the committed JSON. First-wins tie-breaking picked the published constant. Now stated as a plateau |
+| "Sixteen mutants spanning 4.1e-6 to 8.2e-1" | Corrected (2026-08-14) | Eighteen instances across six classes. The 8.2e-1 endpoint is the detection-arm rescale mutant, not one of the frontier's sixteen |
+| "Reordering candidates are 8-50x closer to the oracle" (rev. 3 F5) | Corrected (2026-08-14) | The committed records give 3-73x across cells and 8-62x at the mlp shapes. The selection is now stated |
+| "Mirage tests with 16-bit primes" | Imprecise (2026-08-14) | The primes are p=227 and q=113. Their product fits in 16 bits |
+| "The ~1e-2 sites are MPK runtime-kernel tests" (detail of 1.5) | Corrected (2026-08-14) | The 2e-2/5e-2 checks sit in the mirage repo's transpiler tests. The runtime tests print ratios with no tolerance |
+| Alive-FP cited as "Menendez, Nagarakatte, Martin" | Corrected (2026-08-14) | The third author is Aarti Gupta (DBLP) |
 
 The first two were predicted against myself in the notebook before the falsifying run.
+The 2026-08-14 rows come from review #3: a full-text re-verification of every reference.
 
 ## 3. Tooling
 
@@ -71,3 +83,11 @@ Nine findings; three measured before writing. Full text: [`AUDIT.md`](AUDIT.md).
 | 7 | "These systems test once" was never verified | Removed |
 | 8 | Narrow evidence: one seed per cell, one model, one activation site for the seed box | Disclosed |
 | 9 | d/floor compares maxima at possibly different elements | Disclosed |
+
+## 6. Protocol deviations
+
+Found in review #3 (2026-08-14).
+
+| Registered | Implemented | Note |
+|---|---|---|
+| E1 mutant grid: dropped columns for j in {1,2,4,8,16,32} | j in {1,2,8,32} | The sparser grid removes the j=4 and j=16 column mutants only. The implemented set still brackets the severity range (j = 1 to 32). No threshold moved |
