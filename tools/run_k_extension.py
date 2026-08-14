@@ -5,6 +5,7 @@ registered in CLAIM.md before this ran.
     python tools/run_k_extension.py
 """
 
+import json
 import math
 import sys
 from pathlib import Path
@@ -34,6 +35,7 @@ def gen(shape, seed, sigma=1.0):
 
 def main():
     t = BY_NAME["matmul_k_tiling"]
+    out = {"e2": {}, "e3": {}, "e4": []}   # raw records; the artifact, not the prints
 
     print("PREDICTIONS (CLAIM E2-E4): K=4096 and K=11008 fail on >=95% of")
     print("draws at unit scale; iid 1-(1-p)^n predicts the tensor rate at")
@@ -48,6 +50,7 @@ def main():
             ref, var = t.baseline(io).double(), t.variant(io).double()
             fails += not bool(((var - ref).abs() <= GATE + GATE * ref.abs()).all())
         lo, hi = wilson(fails, 100)
+        out["e2"][str(K)] = {"fails": fails, "draws": 100, "ci": [lo, hi]}
         print(f"  K={K:<6} fail rate {fails}/100  [{lo:.0%}, {hi:.0%}]")
 
     print("\n--- E3: per-element decomposition, K=512, sigma=2.67, 100 draws ---")
@@ -63,6 +66,9 @@ def main():
     p_elem = elem_fail / elem_total
     pred = 1 - (1 - p_elem) ** 4096
     lo, hi = wilson(tensor_fail, 100)
+    out["e3"] = {"p_elem": p_elem, "elem_fail": elem_fail, "elem_total": elem_total,
+                 "tensor_fail": tensor_fail, "draws": 100, "ci": [lo, hi],
+                 "iid_prediction": pred, "outputs_per_draw": 4096}
     print(f"  per-element exceedance p = {p_elem:.2e}")
     print(f"  observed tensor rate {tensor_fail}/100  [{lo:.0%}, {hi:.0%}]")
     print(f"  iid prediction 1-(1-p)^4096 = {pred:.1%}"
@@ -90,9 +96,19 @@ def main():
             fl = ErrorRecord.of(ref, oracle)
             to = ErrorRecord.of(online, oracle)
             df = ErrorRecord.of(online, ref)
+            out["e4"].append({"precision": prec, "reference": label,
+                              "floor": fl.scale_rel, "online_total": to.scale_rel,
+                              "t_over_f": to.scale_rel / fl.scale_rel,
+                              "differential": df.scale_rel,
+                              "gate_pass": df.gate_pass})
             print(f"  {prec} {label:<10} floor {fl.scale_rel:.2e}  "
                   f"online total {to.scale_rel:.2e}  t/f {to.scale_rel/fl.scale_rel:.2f}  "
                   f"gate {'pass' if df.gate_pass else 'FAIL'}")
+
+    Path("results").mkdir(exist_ok=True)
+    with open("results/k_extension.json", "w") as f:
+        json.dump({"gate": GATE, "draws": 100, "shape": [64, 64], **out}, f, indent=2)
+    print("\nraw -> results/k_extension.json")
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ this pins the reference to strided-tree order and re-measures.
     python tools/run_tree_baseline.py
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -40,10 +41,14 @@ def softmax_online(x, chunk=64):
     return torch.exp(x - m.unsqueeze(-1)) / s.unsqueeze(-1)
 
 
-def cellrow(label, ref_p, var_p, oracle):
+def cellrow(label, ref_p, var_p, oracle, section, prec, rows):
     floor = ErrorRecord.of(ref_p, oracle)
     total = ErrorRecord.of(var_p, oracle)
     diff = ErrorRecord.of(var_p, ref_p)
+    rows.append({"section": section, "precision": prec, "case": label,
+                 "floor": floor.scale_rel, "total": total.scale_rel,
+                 "t_over_f": total.scale_rel / floor.scale_rel,
+                 "differential": diff.scale_rel, "gate_pass": diff.gate_pass})
     print(f"{label:<34}{floor.scale_rel:>10.2e}{total.scale_rel:>10.2e}"
           f"{total.scale_rel/floor.scale_rel:>8.2f}{diff.scale_rel:>10.2e}"
           f"{'pass' if diff.gate_pass else 'FAIL':>6}")
@@ -57,6 +62,7 @@ def main():
     print()
     hdr = f"{'case':<34}{'floor':>10}{'total':>10}{'t/f':>8}{'diff':>10}{'gate':>6}"
 
+    rows = []
     for prec in ("fp16", "bf16"):
         dt = DTYPES[prec]
         print(f"--- softmax, mlp shape (512,1024), {prec} ---")
@@ -68,7 +74,8 @@ def main():
                            ("tree reference (this run)", tree_sum)):
             cellrow(f"online vs {label}",
                     softmax_ref(x, ref).double(),
-                    softmax_online(x).double(), oracle)
+                    softmax_online(x).double(), oracle,
+                    "softmax_512x1024", prec, rows)
         print()
 
     for prec in ("fp16", "bf16"):
@@ -78,9 +85,16 @@ def main():
         x = _randn((512, 3072), dt)
         oracle = seq_sum(x.double(), -1)
         var = chunked_sum(x, 32, -1).double()
-        cellrow("chunked vs seq reference", seq_sum(x, -1).double(), var, oracle)
-        cellrow("chunked vs tree reference", tree_sum(x, -1).double(), var, oracle)
+        cellrow("chunked vs seq reference", seq_sum(x, -1).double(), var, oracle,
+                "split_reduction_512x3072", prec, rows)
+        cellrow("chunked vs tree reference", tree_sum(x, -1).double(), var, oracle,
+                "split_reduction_512x3072", prec, rows)
         print()
+
+    Path("results").mkdir(exist_ok=True)
+    with open("results/tree_baseline.json", "w") as f:
+        json.dump({"seed": "corpus.SEED (single draw)", "rows": rows}, f, indent=2)
+    print("raw -> results/tree_baseline.json")
 
 
 if __name__ == "__main__":
