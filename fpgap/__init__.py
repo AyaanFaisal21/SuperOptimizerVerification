@@ -11,6 +11,8 @@ four modules, in dependency order:
                     floor / total / differential, plus both gate readings
     seeds.py        phase-5 input generators: adversarial arrangements of
                     values bounded inside the observed real activation range
+    mutants.py      the detection arm: plausible wrong rewrites, each a real
+                    bug in float64, complement to the valid corpus
 
 tools/ holds the runnable experiments; each one's docstring carries its command.
 CLAIM.md holds the registered claim, thresholds, and the dated verdict.
