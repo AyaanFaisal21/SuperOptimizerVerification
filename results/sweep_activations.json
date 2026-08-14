@@ -35,6 +35,7 @@
       "gate_pass": true
     },
     "d_over_floor": 1.0740025469917396,
+    "acc_ratio": 0.3821182943603852,
     "verdict": {
       "gate_axon": true,
       "gate_as_registered": true,
@@ -79,6 +80,7 @@
       "gate_pass": true
     },
     "d_over_floor": 1.045354771179056,
+    "acc_ratio": 0.08367956410988703,
     "verdict": {
       "gate_axon": true,
       "gate_as_registered": true,
@@ -123,6 +125,7 @@
       "gate_pass": false
     },
     "d_over_floor": 1.0479565670102802,
+    "acc_ratio": 0.2780383547570417,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -167,6 +170,7 @@
       "gate_pass": false
     },
     "d_over_floor": 0.9756292990631255,
+    "acc_ratio": 0.030284897279076142,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -211,6 +215,7 @@
       "gate_pass": false
     },
     "d_over_floor": 1.0815348549138066,
+    "acc_ratio": 0.37197454132552443,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -255,6 +260,7 @@
       "gate_pass": false
     },
     "d_over_floor": 1.281941814247987,
+    "acc_ratio": 0.03993830423631645,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -299,6 +305,7 @@
       "gate_pass": true
     },
     "d_over_floor": 1.0387893487297155,
+    "acc_ratio": 0.25680880330123795,
     "verdict": {
       "gate_axon": true,
       "gate_as_registered": true,
@@ -343,6 +350,7 @@
       "gate_pass": true
     },
     "d_over_floor": 0.9903360990117374,
+    "acc_ratio": 0.02963775576923435,
     "verdict": {
       "gate_axon": true,
       "gate_as_registered": true,
@@ -387,6 +395,7 @@
       "gate_pass": false
     },
     "d_over_floor": 0.9481511796759677,
+    "acc_ratio": 0.15552266917799004,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -431,6 +440,7 @@
       "gate_pass": false
     },
     "d_over_floor": 0.9756292990631255,
+    "acc_ratio": 0.02273820149524501,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -475,6 +485,7 @@
       "gate_pass": false
     },
     "d_over_floor": 1.0815348549138066,
+    "acc_ratio": 0.19092511803023962,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -519,6 +530,7 @@
       "gate_pass": false
     },
     "d_over_floor": 1.281941814247987,
+    "acc_ratio": 0.01805818575201281,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -563,6 +575,7 @@
       "gate_pass": true
     },
     "d_over_floor": 1.3182451316778865,
+    "acc_ratio": 1.1402528410369177,
     "verdict": {
       "gate_axon": true,
       "gate_as_registered": true,
@@ -607,6 +620,7 @@
       "gate_pass": false
     },
     "d_over_floor": 1.9096925646081029,
+    "acc_ratio": 1.3810982871112534,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -651,6 +665,7 @@
       "gate_pass": false
     },
     "d_over_floor": 2.0774814261290038,
+    "acc_ratio": 2.3772787928030827,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -695,6 +710,7 @@
       "gate_pass": true
     },
     "d_over_floor": 1.7103994600686743,
+    "acc_ratio": 1.3595012398668087,
     "verdict": {
       "gate_axon": true,
       "gate_as_registered": true,
@@ -739,6 +755,7 @@
       "gate_pass": false
     },
     "d_over_floor": 0.8127063422050326,
+    "acc_ratio": 1.1430766390751024,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -783,6 +800,7 @@
       "gate_pass": false
     },
     "d_over_floor": 0.2754905220434265,
+    "acc_ratio": 1.0,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -827,6 +845,7 @@
       "gate_pass": true
     },
     "d_over_floor": 0.9106195836969413,
+    "acc_ratio": 0.6974514866454784,
     "verdict": {
       "gate_axon": true,
       "gate_as_registered": true,
@@ -871,6 +890,7 @@
       "gate_pass": false
     },
     "d_over_floor": 0.6349752251480132,
+    "acc_ratio": 0.8308306746329019,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -915,6 +935,7 @@
       "gate_pass": false
     },
     "d_over_floor": 0.854285082343073,
+    "acc_ratio": 0.5116270186398706,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -959,6 +980,7 @@
       "gate_pass": true
     },
     "d_over_floor": 1.1315783480263077,
+    "acc_ratio": 0.25933156826025383,
     "verdict": {
       "gate_axon": true,
       "gate_as_registered": true,
@@ -1003,6 +1025,7 @@
       "gate_pass": false
     },
     "d_over_floor": 2.493606521711317,
+    "acc_ratio": 1.538729311948506,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
@@ -1047,6 +1070,7 @@
       "gate_pass": false
     },
     "d_over_floor": 2.5081236640904914,
+    "acc_ratio": 1.7941222676858317,
     "verdict": {
       "gate_axon": false,
       "gate_as_registered": false,
