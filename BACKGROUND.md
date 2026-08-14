@@ -32,8 +32,10 @@ Every system verifies an exact-arithmetic idealization.
 Every system ships a floating-point kernel.
 Sampling closes the distance in all three, with no error bound.
 
-The authors state this limitation themselves.
-None of them measures it.
+Axon and Mirage state this limitation in their papers.
+Prism does not mention floating point at all.
+Its one precision statement is that all benchmarks run at half precision.
+None of the three measures the gap.
 Two trends press on it: transformations reorder more accumulation, and production precision falls to bf16 and below, while the one stated tolerance is calibrated at FP32.
 
 ## What this project measures
