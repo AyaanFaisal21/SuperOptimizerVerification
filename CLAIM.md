@@ -366,3 +366,25 @@ sigma sweep at K = 512 reads 0/100 at sigma <= 1.0 and contains the
 committed 14% at sigma = 2.67 inside its CI.
 
 No prior threshold moves.
+
+### 2026-08-14 (second amendment) — exact tolerance separability registered
+
+**Trigger.** External review #4: the frontier's 64-point grid does not by itself
+establish that the rule family cannot separate the classes; a separator could sit
+between grid points. The reviewer sketches the exact test; this registers it.
+
+**E5 — exact separability on the recorded corpus.** For each recorded element,
+acceptance at (atol, rtol) is the half-plane atol + rtol*|b| >= |g-b|. Per draw,
+the acceptance boundary is the upper envelope max_i(|g-b|_i - rtol*|b|_i),
+computed exactly from the convex hull of that draw's (|b|, |g-b|) points. A
+separator exists iff some rtol in [0, 100] has max(F(rtol), 0) < G(rtol), where
+F is the pooled valid envelope and G the minimum mutant-draw envelope. Between
+sample points, no-separation is certified per interval using convexity (each
+envelope lies below its chord; F is non-increasing).
+
+**Prediction.** No separator exists for any atol >= 0, rtol in [0, 100]: every
+interval is certified, and sup(G - max(F,0)) < 0. Mechanism: the valid corpus
+contains near-zero-|b| violations whose required atol exceeds every eps-mutant
+draw's entire envelope at every rtol before both fall below zero.
+
+No prior threshold moves. Scope: the recorded corpus, rtol <= 100.
