@@ -448,3 +448,8 @@ pairs at their mlp shapes plus the K=2048 tiling cell, 50 unit-scale draws
 each; the 16 parameterized frontier mutant instances, 50 draws each). Adding
 mutants can only lower G, so non-separability over the 16 extends a fortiori
 to supersets including the two gross detection-arm instances.
+
+**E8 outcome (2026-08-14, recorded after the run).** Three corners as
+predicted and closed over rtol >= 0. The fourth-corner prediction is
+falsified: (F_any, G_some) separates on rtol in [7.8e-03, 7.9] with
+margin +9.5e-06. Details in NOTEBOOK.md and paper F2.
