@@ -1,8 +1,7 @@
 # Characterizing Floating-Point Validation Rules for Tensor Superoptimization
 
-Ayaan Faisal. Rev. 5a.2 of 2026-08-15: correctness pass per external
-review 7; Mirage bound stated exactly; semantics scoped to the analyzed
-extremes. Artifact: this repository.
+Ayaan Faisal. Rev. 5a.2 of 2026-08-15: correctness and clarity pass per
+external review 7. Artifact: this repository.
 
 ## Abstract
 
@@ -23,7 +22,7 @@ contraction widths used by deployed 7B-class models (0/100 draws at K=2048,
 onset near K=1024 under scale-matched gaussian inputs at sigma 2.67). An
 exact envelope analysis of the recorded separability corpus (six
 real-equivalent rewrites, one at two contraction widths, against sixteen
-frontier bug instances, fifty draws each) shows that no nonnegative mixed
+injected-bug instances, fifty draws each) shows that no nonnegative mixed
 absolute-relative tolerance separates rewrites from bugs under the two
 extreme Boolean cross-draw semantics analyzed, all-draws-must-pass and
 any-draw-may-pass, over the entire domain rtol >= 0. A real eps-placement
@@ -100,11 +99,11 @@ Contributions:
    what the rule tests), the direction ratio total/floor with absolute
    errors alongside, and the rule's verdict under three references.
 3. An exact corpus-level separability analysis under all four pairings of
-   the extreme Boolean per-class draw semantics, closed over rtol >= 0, in
-   addition to a 64-point tolerance grid.
+   the extreme Boolean per-class draw semantics, characterized over the
+   whole domain rtol >= 0, in addition to a 64-point tolerance grid.
 4. An audit trail: pre-registration with dated amendments, predictions
-   committed before every run, and an errata with four retracted or
-   corrected results of our own.
+   committed before every run, and an errata recording every retracted or
+   corrected result of our own.
 
 ## 2. Background
 
@@ -174,8 +173,8 @@ run on one fixed recorded dataset, the separability corpus: the six valid
 pairs at their mlp shapes plus the K=2048 tiling cell (seven program
 cells) and the sixteen parameterized frontier instances, fifty unit-scale
 draws per program on shared seeds. The two gross detection-arm instances
-are excluded; adding bug instances can only lower the bug-side envelope,
-so non-separation extends a fortiori to supersets. For a recorded draw
+are excluded; adding mutant instances can only lower the mutant-side
+envelope, so non-separation extends a fortiori to supersets. For a recorded draw
 with per-element differences d_i = |g_i - b_i| and reference magnitudes
 x_i = |b_i|, T(r) = max_i (d_i - r * x_i) is the unclamped absolute
 slack the draw requires at relative tolerance r: any real atol >= T(r)
@@ -188,9 +187,9 @@ class-level envelopes cover the extreme Boolean per-class semantics:
 F_all(r), the maximum over all valid draws (a valid program is accepted
 only if every draw passes); F_any(r), the maximum over valid programs of
 the minimum over each program's draws (accepted if some draw passes);
-G_every(r), the minimum over all bug draws (a bug is caught only if every
-draw fails); and G_some(r), the minimum over bug instances of the maximum
-over each instance's draws (caught if some draw fails). A separator exists
+G_every(r), the minimum over all mutant draws (a mutant is caught only
+if every draw fails); and G_some(r), the minimum over mutant instances
+of the maximum over each instance's draws (caught if some draw fails). A separator exists
 at r for a pairing (F, G) iff max(F(r), 0) < G(r). The computation samples
 401 rtol values (zero and 400 log-spaced in [1e-9, 100]) and certifies
 each inter-sample interval with a single-witness bound: a witness draw
@@ -201,7 +200,7 @@ so lies above its right-endpoint value; when the witness bound does not
 exceed max(F, 0) at the right endpoint, no r in the interval separates.
 Convexity is used only for single witness envelopes, never for the
 min-envelopes G, which need not be convex. Every envelope is
-non-increasing, so a nonpositive bug-side envelope at r = 100 extends
+non-increasing, so a nonpositive mutant-side envelope at r = 100 extends
 no-separation to all r > 100, closing the domain rtol >= 0.
 
 **Evidence classes.** Claims below signal their evidence type by verb.
@@ -215,8 +214,8 @@ qualifiers.
 **Protocol labels.** Analyses are marked registered (in the original
 claim), amended (registered by dated amendment before execution: the mutant
 arm, the tolerance frontier, the K extension, the decomposition, the
-library reference, the C1-C3 pass, the separability computations E5-E6, and
-the grid completion E7), or exploratory (single-draw sweeps that motivated
+library reference, the C1-C3 pass, the separability computations E5, E6,
+and E8, and the grid completion E7), or exploratory (single-draw sweeps that motivated
 later registered runs). Predictions precede every run in the committed log.
 
 ## 4. Findings
@@ -252,22 +251,22 @@ measured per-element exceedance of 3.42e-05 at K=512, gives 13.1%,
 consistent with the observed [9-22%]; dependence among output elements is
 not established either way.
 
-**F2. No mixed absolute-relative tolerance separates the measured corpus
+**F2. No mixed absolute-relative tolerance separates the recorded corpus
 under the two extreme Boolean cross-draw semantics analyzed; a
 class-conditioned draw assignment would.** On the separability corpus, with the envelopes of Section 3:
-under all-draws-must-pass (a candidate is accepted iff every draw passes,
-so a bug is caught if at least one draw fails), no (atol >= 0, rtol >= 0)
-separates, with supremum separation gap -4.0e-06. Under any-draw-may-pass
-(accepted if any draw passes, so a bug is caught only if every draw
-fails), the same, at -4.2e-06. The pessimal pairing, valid programs held
-to every draw while bugs must fail every draw, reads -3.5e-05. All 400
+under all-draws-must-pass (a candidate is accepted iff every draw
+passes, so an erroneous candidate is caught if at least one draw fails),
+no (atol >= 0, rtol >= 0) separates, with supremum separation gap -4.0e-06. Under any-draw-may-pass
+(accepted if any draw passes, so an erroneous candidate is caught only
+if every draw fails), the same, at -4.2e-06. The pessimal pairing, valid programs held
+to every draw while mutants must fail every draw, reads -3.5e-05. All 400
 inter-sample intervals in each of these three analyses carry the
-single-witness certificate of Section 3, and the bug-side envelopes are
-nonpositive at rtol = 100 (-5.5e-05 and -2.4e+02), which extends all
+single-witness certificate of Section 3, and the mutant-side envelopes
+are nonpositive at rtol = 100 (-5.5e-05 and -2.4e+02), which extends all
 three results to the whole domain rtol >= 0. The fourth pairing is a
 class-conditioned information bound, not an operational validator: it
 judges each valid program on its most favorable recorded draw and each
-bug on its least favorable one, an assignment that requires knowing the
+mutant on its least favorable one, an assignment that requires knowing the
 class in advance. Under it, separators exist on a contiguous band rtol
 in [7.8e-03, 7.9] with maximum margin +9.5e-06 (for example,
 atol = 1e-06 at rtol = 0.056). So the pointwise recorded errors are not
@@ -281,7 +280,7 @@ source paper states, swings the margin from -3.5e-05 across zero to
 k-th order statistic of the same per-draw envelopes on both classes;
 they are coherent, unanalyzed here, and remain part of the
 specification space. On the 64-point grid, the minimum observed total error (an
-equal-weight sum of the valid-rejection and bug-miss fractions; the
+equal-weight sum of the valid-rejection and mutant-miss fractions; the
 weighting is an analytical choice, and the two components are reported
 separately in the artifact) is a three-point plateau on the tested grid,
 (1e-4, 1e-4), (1e-4, 1e-3), (1e-4, 1e-2),
@@ -375,7 +374,8 @@ it is also the pair the verifiers handle worst, by our inference from their
 mechanisms: its running max is not a Lax operator, so Mirage partitions
 around it, and Axon's uninterpreted exp blocks the rescale identity;
 neither paper classifies the transformation itself. Exceptional regimes
-(NaN, Inf, subnormals, overflow) are not covered and remain open.
+(NaN, Inf, subnormals, overflow) are not covered by our gaussian and
+activation inputs and remain open.
 
 ## 5. Threats to validity
 
@@ -416,9 +416,13 @@ above is not an estimate of any candidate-population miss probability.
 of the tested 64-point grid (F2), and no constant in the family separates
 the recorded corpus under the two extreme Boolean cross-draw semantics
 analyzed; its rule's
-verdict becomes shape-dependent within deployed contraction widths on our
-backend (F1). An oracle comparison could preserve accuracy-improving
-candidates (F3); a reference-relative rule cannot determine whether a
+verdict becomes shape-dependent within deployed contraction widths on
+our backend, for a system whose proofs are shape-generic (F1). What the
+measurements support reporting: the draw count, the reference
+implementation and its accumulation order, and a justified error budget
+for the operator, shape, and precision, of the kind derived for
+mixed-precision GEMM by Blanchard et al. and Higham and Mary. An oracle
+comparison could preserve accuracy-improving candidates (F3); a reference-relative rule cannot determine whether a
 disagreement improves or worsens oracle-relative accuracy.
 
 **For Prism.** Half-precision evaluation with an unstated threshold sits
@@ -432,11 +436,14 @@ reference, and draw protocol would make it reproducible and interpretable
 from the paper specification. Appendix A records that the filter is not
 locatable in the released artifact at the audited commits.
 
-**Method integrity.** Four of our own results were retracted or corrected
-during this study, including a K=2048 rejection verdict produced by
-comparing a maximum absolute difference against `atol` alone, the same
-quantity confusion this paper studies. Every correction moved against our
-registered claim. The errata and dated run log are part of the artifact.
+**Method integrity.** Our own retracted or corrected results include a
+mischaracterization of Mirage's testing from a stale paper version, a
+direction-blind metric interpretation refuted by our own records, an
+unsupported single-draw attribution, a K=2048 rejection verdict produced
+by comparing a maximum absolute difference against `atol` alone (the
+same quantity confusion this paper studies), and a misread of Mirage's
+Theorem 2 bound. Every correction moved against our own claims. The
+errata and dated run log are part of the artifact.
 
 ## 7. Related work
 

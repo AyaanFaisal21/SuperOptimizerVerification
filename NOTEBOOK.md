@@ -323,3 +323,19 @@ bound, and the appendix states what the audit found rather than what
 exists. No new experiments. Process note: the previous commit pushed
 the PAPER.md half alone after a patch-script anchor failed mid-run;
 this commit completes the tex, errata, and notebook half.
+
+## 2026-08-15 - Pre-expert clarity pass
+
+Full read of both paper files after seven review cycles of surgical
+patches. Fixed: mutant/bug terminology unified in the envelope machinery
+(mutant for corpus objects, erroneous candidate in the operational
+definitions, bug for semantic class); E8 added to the protocol-labels
+registry; two stale embedded counts corrected (the errata no longer
+carries a fixed count, the falsified-prediction count now includes E8);
+"closed over rtol >= 0" in the contributions reworded, since the fourth
+pairing separates; the F2 heading now says recorded corpus; md/tex
+mirrors aligned on the F5 closing sentence, the F6 scale-vs-distribution
+sentence, the Axon reporting list, F7 regimes, and the enumerated Method
+integrity paragraph, which now includes the Theorem 2 misread. No claim
+changed strength; the seven protected claims verified present after the
+pass.
