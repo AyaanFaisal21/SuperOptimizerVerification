@@ -37,8 +37,8 @@ candidate is 15x closer, 1.6x closer, and 1.6x farther from a float64 oracle,
 respectively (100-draw fail rates 100%, 2%, and 1% at fp16), and even the
 per-draw ranking of references flips on one draw in five; (4) detection is a rate that current papers do not permit
 computing: a valid rewrite trips the rule on 14% [9-22%] of draws under scale-matched
-gaussian inputs and 0/100 at unit scale, and the tensor-level rate is
-predicted by per-element exceedance under independence (13.1% predicted,
+gaussian inputs and 0/100 at unit scale, and a simple independence approximation over per-element exceedance is
+consistent with the tensor-level rate (13.1% predicted,
 observed CI 9-22%). Real-activation FP32 cells pass everywhere measured. The study's
 conclusion is a specification, not an indictment: a reported reference order,
 draw count, precision scope, and error budget would make this stage as
@@ -52,9 +52,9 @@ program structure across millions of candidates, and the search selects for
 whatever passes the acceptance rule. Mirage, Prism, and Axon verify candidate
 equivalence over exact or idealized arithmetic (Section 2) and close the
 distance to the compiled floating-point kernel with a sampled comparison
-against a reference implementation. Axon and Mirage state this limitation;
-Prism does not discuss floating-point behavior at all, beyond noting that
-its benchmarks run at half precision. None fully specifies the reference, threshold, draw
+against a reference implementation. Axon and Mirage state this limitation; Prism reports random equivalence
+testing without a stated criterion and does not otherwise discuss
+floating-point behavior. None fully specifies the reference, threshold, draw
 protocol, and precision scope together, so a reader cannot compute what the
 check accepts or rejects.
 

@@ -1,5 +1,5 @@
 % Characterizing Floating-Point Validation Rules for Tensor Superoptimization
-% Rev. 4: review-3 corrections + C1-C3 measurement-pass results.
+% Rev. 4.1: review-4 fixes, exact separability (E5), frontier figure.
 % Single file; pdflatex on Overleaf.
 \documentclass[twocolumn,10pt]{article}
 \usepackage[margin=0.9in,columnsep=0.28in]{geometry}
@@ -15,7 +15,7 @@
 
 \title{Characterizing Floating-Point Validation Rules\\for Tensor Superoptimization}
 \author{Ayaan Faisal\\Rutgers University}
-\date{Rev.\ 4, August 14, 2026}
+\date{Rev.\ 4.1, August 14, 2026}
 
 \begin{document}
 \maketitle
@@ -52,8 +52,8 @@ from a float64 oracle, respectively (100-draw fail rates 100\%, 2\%, and 1\%
 at fp16), and even the per-draw ranking of references flips on one draw in
 five; (4) detection is a rate that current papers do not permit computing: a
 valid rewrite trips the rule on 14\% [9--22\%] of draws under
-scale-matched gaussian inputs and $0/100$ at unit scale, and the tensor-level rate is
-predicted by per-element exceedance under independence (13.1\% predicted,
+scale-matched gaussian inputs and $0/100$ at unit scale, and a simple independence approximation over per-element exceedance is
+consistent with the tensor-level rate (13.1\% predicted,
 observed CI 9--22\%). Real-activation FP32 cells pass everywhere measured. The study's
 conclusion is a specification, not an indictment: a reported reference
 order, draw count, precision scope, and error budget would make this stage
@@ -69,9 +69,9 @@ selects for whatever passes the acceptance rule. Mirage~\cite{mirage},
 Prism~\cite{prism}, and Axon~\cite{axon} verify candidate equivalence over
 exact or idealized arithmetic (Section~\ref{sec:background}) and close the
 distance to the compiled floating-point kernel with a sampled comparison
-against a reference implementation. Axon and Mirage state this limitation;
-Prism does not discuss floating-point behavior at all, beyond noting that
-its benchmarks run at half precision. None fully specifies the reference, threshold, draw protocol, and
+against a reference implementation. Axon and Mirage state this limitation; Prism reports random equivalence
+testing without a stated criterion and does not otherwise discuss
+floating-point behavior. None fully specifies the reference, threshold, draw protocol, and
 precision scope together, so a reader cannot compute what the check
 accepts or rejects.
 
