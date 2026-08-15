@@ -398,3 +398,17 @@ set is now named (split reduction, reassociation, online softmax).
 Provenance table published in BACKGROUND.md from the corpus records; the
 intro now marks the online-softmax pair's unclassified status instead of
 claiming blanket acceptance.
+
+## 2026-08-15 - Reader pass per review 8; internal loop closed
+
+Four edits, each checked against its audited source before the wording
+moved. The abstract and F3 heading now state the reference finding at
+both granularities: single-draw reversal, draw-dependent tree direction,
+11x mean for sequential (1/0.0938 from the 100-draw mean ratio, the same
+number F3's body carries). The abstract drops the corpus parenthesis
+(Method carries it) and three CI brackets (F1 and F4 carry them); no
+number changed. F2 opens with an operational orientation that defines
+separation before the envelope machinery. The eleven-falsified count
+leaves the contribution list; the run log keeps it. Central numbers
+untouched. Per the review, this closes the internal loop; next is the
+external expert read.

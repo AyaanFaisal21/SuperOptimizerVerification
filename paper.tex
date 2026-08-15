@@ -1,5 +1,5 @@
 % Characterizing Floating-Point Validation Rules for Tensor Superoptimization
-% Rev. 5a.3: claim audit; every number asserted against the records.
+% Rev. 5a.4: reader pass per review 8; F3 at both granularities.
 % Single file; pdflatex on Overleaf.
 \documentclass[twocolumn,10pt]{article}
 \usepackage[margin=0.9in,columnsep=0.28in]{geometry}
@@ -15,7 +15,7 @@
 
 \title{Characterizing Floating-Point Validation Rules\\for Tensor Superoptimization}
 \author{Ayaan Faisal\\Rutgers University}
-\date{Rev.\ 5a.3, August 15, 2026}
+\date{Rev.\ 5a.4, August 15, 2026}
 
 \begin{document}
 \maketitle
@@ -34,19 +34,19 @@ precision, tolerance constants, and sampling protocol, including the
 cross-draw aggregation rule. In float32 PyTorch on an Apple M3 (CPU), a
 real-equivalent tiled matmul reaches substantial rejection rates at
 contraction widths used by deployed 7B-class models ($0/100$ draws at
-$K{=}2048$, $48/100$ [38--58\%] at $K{=}4096$, $100/100$ [96--100\%] at
-$K{=}11008$ at unit scale; onset near $K{=}1024$ under scale-matched
-gaussian inputs at $\sigma$ 2.67). An exact envelope analysis of the
-recorded separability corpus (six real-equivalent rewrites, one at two
-contraction widths, against sixteen injected-bug instances, fifty draws
-each) shows that no nonnegative mixed absolute-relative tolerance
-separates rewrites from bugs under the two extreme Boolean cross-draw
-semantics analyzed, all-draws-must-pass and any-draw-may-pass, over the
-entire domain $\rtol\ge0$. A real eps-placement bug evades every
-recorded draw at the published constant. Two plausible references
-reverse the direction of oracle-relative accuracy for the same candidate,
-and a sequential reference magnifies the difference to $15\times$. Repeated
-draws expose per-draw rejection rates ($14/100$ [9--22\%]) that
+$K{=}2048$, $48/100$ at $K{=}4096$, $100/100$ at $K{=}11008$ at unit
+scale; onset near $K{=}1024$ under scale-matched gaussian inputs at
+$\sigma$ 2.67). An exact envelope analysis of the
+recorded corpus shows that no nonnegative mixed absolute-relative
+tolerance separates real-equivalent rewrites from injected bugs under
+the two extreme Boolean cross-draw semantics analyzed,
+all-draws-must-pass and any-draw-may-pass, over the entire domain
+$\rtol\ge0$. A real eps-placement bug evades every
+recorded draw at the published constant. Reference choice changes oracle-relative accuracy judgments: two
+plausible references reverse the ranking on a registered draw, the tree
+direction itself flips across draws, and a sequential reference is on
+average $11\times$ less accurate than the candidate it validates.
+Repeated draws expose per-draw rejection rates ($14/100$) that
 single-input testing misses. Real-activation FP32 cells pass everywhere
 measured. These results do not demonstrate failures in the measured
 systems; they identify the protocol coordinates that must be stated for
@@ -131,9 +131,8 @@ semantics, characterized over the whole domain $\rtol\ge0$, answering
 whether observed failures are a calibration problem or a rule-family
 problem.
 \item An audit trail: pre-registration with dated amendments, predictions
-committed before every run (the log records eleven falsified by their
-own runs), and an errata recording every retracted or corrected result
-of our own.
+committed before every run, and a complete errata of our own corrected
+results.
 \end{enumerate}
 
 \section{Background}\label{sec:background}
@@ -337,8 +336,14 @@ inputs. The onset shifts roughly fourfold with input scale.}
 
 \paragraph{F2. No mixed absolute-relative tolerance separates the
 recorded corpus under the two extreme Boolean cross-draw semantics
-analyzed; a class-conditioned draw assignment would.} On the separability corpus, with the envelopes of the
-Method section: under \emph{all-draws-must-pass} (a candidate is accepted
+analyzed; a class-conditioned draw assignment would.} In plain terms:
+however the constants are chosen, a validator applying either extreme
+cross-draw rule cannot accept every valid rewrite while catching all
+sixteen injected bugs on the recorded data; the recorded errors
+themselves are separable, but only by an assignment that already knows
+which programs are the bugs. The exact statements, on the separability
+corpus with the envelopes of the Method section: under
+\emph{all-draws-must-pass} (a candidate is accepted
 iff every draw passes, so an erroneous candidate is caught if at least
 one draw fails), no
 $(\atol \ge 0, \rtol \ge 0)$ separates, with supremum separation gap
@@ -504,8 +509,10 @@ cross-draw semantics analyzed.}
 \label{fig:frontier}
 \end{figure}
 
-\paragraph{F3. Two plausible references reverse the direction of the
-accuracy comparison; a sequential reference magnifies it to $15\times$.}
+\paragraph{F3. Reference choice changes the direction of the accuracy
+comparison, and the tree direction is itself draw-dependent; a
+sequential reference is on average $11\times$ less accurate than the
+candidate.}
 Observed at fp16 on the registered single-draw cell at $(512, 1024)$,
 absolute oracle errors in parentheses, 100-draw rates alongside: against
 the strided-tree reference the candidate is $1.6\times$ closer to the
