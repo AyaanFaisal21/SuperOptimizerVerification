@@ -1,70 +1,70 @@
 # Characterizing Floating-Point Validation Rules for Tensor Superoptimization
 
-Ayaan Faisal. Rev. 4 of 2026-08-14: corrections from external review 3 (a
-full-text re-verification of every reference) plus the registered C1-C3
-measurement-pass results. Artifact: this repository.
+Ayaan Faisal. Rev. 5a of 2026-08-14: consolidation per external review 5;
+two-criterion envelope analysis (E6); protocol taxonomy. Artifact: this
+repository.
 
 ## Abstract
 
-Recent tensor superoptimizers specify their symbolic equivalence mechanisms in
-detail, then apply a comparatively unspecified floating-point acceptance rule
-to the compiled kernel: compare against a reference implementation on random
-inputs, elementwise, within `|g_i - b_i| <= atol + rtol*|b_i|`. Axon states
-`rtol = atol = 1e-4` on FP32; Mirage describes floating-point filtering
-without threshold or protocol; Prism reports random equivalence testing but
-does not state its numerical criterion. We characterize this validation stage as a
-measurement problem: what does its verdict depend on, and what would need to
-be reported for the verdict to be interpretable? We measure a representative
-rule on six rewrites that are algebraic identities over the reals and
-eighteen injected bugs whose float64 divergences span 4.1e-6 to 8.2e-1, across
-contraction sizes, precisions, reference implementations, input scales, and
-draw counts, under a pre-registered protocol with dated amendments. Findings:
-(1) the rule's rejection of valid rewrites is governed by near-zero output
-elements meeting accumulation-dependent error growth, and reaches the
-contraction widths of deployed models: at M=N=64 the valid tiled matmul is
-rejected on 0/100 draws at K=2048, 48/100 [38-58%] at K=4096, and 100/100
-[96-100%] at K=11008, the projection and MLP widths of Llama-2-7B, and with
-scale-matched gaussian inputs (sigma 2.67) the onset falls roughly fourfold,
-to K near 1024; (2) no
-mixed absolute-relative tolerance separates the corpus: an exact feasibility
-computation over the recorded per-element errors rules out every (atol >= 0,
-rtol <= 100), and the best grid plateau, which contains Axon's own constant,
-rejects no valid rewrite at unit scale yet passes a real eps-placement bug on
-every draw; (3) the verdict and even the
-direction of the accuracy comparison depend on the reference implementation:
-against sequential, tree, and `torch.sum` references, the same online-softmax
-candidate is 15x closer, 1.6x closer, and 1.6x farther from a float64 oracle,
-respectively (100-draw fail rates 100%, 2%, and 1% at fp16), and even the
-per-draw ranking of references flips on one draw in five; (4) detection is a rate that current papers do not permit
-computing: a valid rewrite trips the rule on 14% [9-22%] of draws under scale-matched
-gaussian inputs and 0/100 at unit scale, and a simple independence approximation over per-element exceedance is
-consistent with the tensor-level rate (13.1% predicted,
-observed CI 9-22%). Real-activation FP32 cells pass everywhere measured. The study's
-conclusion is a specification, not an indictment: a reported reference order,
-draw count, precision scope, and error budget would make this stage as
-interpretable as the verifiers above it.
+Recent tensor superoptimizers specify their semantic verification in detail
+while incompletely specifying the empirical floating-point checks applied to
+generated implementations. Axon states an elementwise rule,
+`|g_i - b_i| <= atol + rtol*|b_i|` at `rtol = atol = 1e-4` on FP32; Mirage
+describes floating-point filtering without threshold or protocol; Prism
+reports random equivalence testing but does not state its numerical
+criterion. We characterize a fully specified representative rule and show
+that its verdict depends materially on contraction length and output
+multiplicity, input scale and distribution, reference implementation,
+precision, tolerance constants, and sampling protocol, including the
+cross-draw aggregation rule. On our PyTorch/Ampere backend, a real-equivalent
+tiled matmul reaches substantial rejection rates at contraction widths used
+by deployed 7B-class models (0/100 draws at K=2048, 48/100 [38-58%] at
+K=4096, 100/100 [96-100%] at K=11008 at unit scale; onset near K=1024 under
+scale-matched gaussian inputs at sigma 2.67). An exact analysis of the
+measured corpus shows no nonnegative mixed absolute-relative tolerance with
+rtol <= 100 separates the six real-equivalent rewrites from eighteen injected
+bugs under either cross-draw quantifier, while a real eps-placement bug
+evades every recorded draw at the published constant. Two plausible
+references reverse the direction of oracle-relative accuracy for the same
+candidate, and a sequential reference magnifies the difference to 15x.
+Repeated draws expose per-draw rejection rates (14/100 [9-22%]) that
+single-input testing misses. Real-activation FP32 cells pass everywhere
+measured. These results do not demonstrate failures in the measured systems;
+they identify the protocol coordinates that must be stated for empirical
+numerical validation to be reproducible and interpretable.
 
 ## 1. Introduction
 
 A kernel autotuner tunes a fixed computation against a template that pins
-semantics; one reference validates every candidate. A superoptimizer searches
-program structure across millions of candidates, and the search selects for
-whatever passes the acceptance rule. Mirage, Prism, and Axon verify candidate
-equivalence over exact or idealized arithmetic (Section 2) and close the
-distance to the compiled floating-point kernel with a sampled comparison
-against a reference implementation. Axon and Mirage state this limitation; Prism reports random equivalence
-testing without a stated criterion and does not otherwise discuss
-floating-point behavior. None fully specifies the reference, threshold, draw
-protocol, and precision scope together, so a reader cannot compute what the
-check accepts or rejects.
+semantics; one reference validates every candidate. A superoptimizer
+searches program structure across millions of candidates, and the search
+selects for whatever passes the acceptance rule. Mirage, Prism, and Axon
+verify candidate equivalence over exact or idealized arithmetic (Section 2)
+and close the distance to the compiled floating-point kernel with a sampled
+comparison against a reference implementation. Axon and Mirage state this
+limitation; Prism reports random equivalence testing without a stated
+criterion and does not otherwise discuss floating-point behavior. None fully
+specifies the reference, threshold, draw protocol, and precision scope
+together, so a reader cannot compute what the check accepts or rejects.
 
-We treat that stage as an object of measurement. The question is not whether
-any system has shipped a wrong kernel (we find no evidence of that), but what
-the acceptance rule's verdict depends on: problem shape, output multiplicity,
-reference implementation, precision, input scale and distribution, and number
-of draws. Two failure directions are measured on the same rule at the same
-tolerance: rejection of rewrites that are algebraic identities over the
-reals, and acceptance of injected bugs.
+The organizing observation of this study is that a floating-point validation
+verdict is not determined by a tolerance pair. It is determined by a
+protocol with several independent coordinates: the reference implementation,
+the precision, the input distribution and scale, the per-element comparison
+rule, the within-tensor aggregation (one violating element rejects the
+tensor), the number of independent draws, and the cross-draw aggregation
+rule. Our measurements show that each of these coordinates is load-bearing:
+changing one, holding the others fixed, changes the verdict. The findings
+map onto the coordinates directly: F1 (contraction length, output
+multiplicity, input scale, within-tensor aggregation), F2 (tolerance
+constants and cross-draw quantifier), F3 (reference implementation), F4
+(draw count and cross-draw aggregation), F5 (precision), F6-F7 (input
+distribution beyond scale).
+
+Two failure directions are measured on the same rule at the same tolerance:
+rejection of rewrites that are algebraic identities over the reals, and
+acceptance of injected bugs. The question is not whether any system has
+shipped a wrong kernel; we find no evidence of that.
 
 Scope, stated first: we characterize the rule, not the systems' outputs. The
 rewrites are PyTorch reimplementations of transformations these systems
@@ -74,35 +74,29 @@ emitted by Mirage, Prism, or Axon is executed; Axon's deployment target
 FPRev and FTTN document that accumulation order and extra-precision behavior
 vary across real libraries and accelerators and are largely unspecified.
 Findings transfer to the extent the rule, not the backend, drives them;
-Section 5 marks which findings the caveat touches.
+Section 5 marks which findings that caveat touches.
 
-A note on labels, following the distinction this study itself surfaces:
-"valid" below means equivalent over the reals, and "bug" means inequivalent
-over the reals. Real-equivalence is not numerical acceptability. A real
-identity can be numerically unstable, and a semantic bug can be numerically
-negligible on a given input domain; our corpus contains both cases, and
-Section 4 keeps the two axes separate: semantic class is fixed by
-construction, numerical quality is measured against a float64 oracle.
+A note on labels: "valid" below means equivalent over the reals, and "bug"
+means inequivalent over the reals. Real-equivalence is not numerical
+acceptability. A real identity can be numerically unstable, and a semantic
+bug can be numerically negligible on a given input domain; our corpus
+contains both cases, and Section 4 keeps the two axes separate.
 
 Contributions:
 
 1. A two-class corpus: six real-equivalent rewrites with per-system
-   provenance (identities established symbolically; implementations validated
-   to 3.5e-15 against a 50-digit-validated float64 oracle), and eighteen
-   injected bugs across six classes whose float64 divergences span 4.1e-6 to
-   8.2e-1, sixteen of which form the frontier's severity continuum.
-2. An instrument that reports, per cell, the reference's oracle error
-   (floor), the candidate's oracle error (total), their disagreement
-   (differential, what the rule tests), the direction ratio total/floor with
-   absolute errors alongside, and the rule's verdict under three reference
-   implementations.
-3. A tolerance-frontier measurement over the full (atol, rtol) grid, plus
-   an exact continuum feasibility computation on the recorded corpus,
-   answering whether observed failures are a calibration problem or a
-   rule-family problem.
+   provenance (identities established symbolically; implementations
+   validated to 3.5e-15 against a 50-digit-validated float64 oracle), and
+   eighteen injected bugs across six classes whose float64 divergences span
+   4.1e-6 to 8.2e-1, sixteen forming the frontier's severity continuum.
+2. An instrument reporting, per cell, the reference's oracle error (floor),
+   the candidate's oracle error (total), their disagreement (differential,
+   what the rule tests), the direction ratio total/floor with absolute
+   errors alongside, and the rule's verdict under three references.
+3. An exact corpus-level separability analysis under both plausible
+   cross-draw quantifiers, in addition to a 64-point tolerance grid.
 4. An audit trail: pre-registration with dated amendments, predictions
-   committed before every run (the log records nine falsified by their own
-   runs, including one this revision), and an errata with four retracted or
+   committed before every run, and an errata with four retracted or
    corrected results of our own.
 
 ## 2. Background
@@ -110,7 +104,7 @@ Contributions:
 Mirage restricts search to its Lax fragment and probabilistically verifies
 candidate equivalence by evaluation over random finite-field values; the
 theorem bounds the probability of accepting a non-equivalent program, and
-the implementation runs a single random test with primes p = 227 and q = 113,
+the implementation runs a single random test with primes p=227 and q=113,
 chosen so their product fits in 16-bit integers, which the authors
 acknowledge. Separately, Mirage v3 (section 5.2) states that floating-point
 tests filter muGraphs with "significant numerical errors"; threshold,
@@ -119,16 +113,17 @@ hand-written axioms in an e-graph; the axioms are intended to be sound, a
 formal proof is stated to be beyond scope, and every generated kernel is
 subjected to random equivalence testing with no stated tolerance, in an
 evaluation that is entirely half-precision; the paper does not otherwise
-discuss floating-point behavior. Axon proves equivalence over the
-reals with Z3 (1650x faster than Z3's floating-point theory on its own
-example) and validates compiled NKI kernels on Trainium against a reference
-implementation on random FP32 inputs at `rtol = atol = 1e-4`. Axon does not
-state how many independent inputs the numerical gate uses; its evaluation
-separately reports 100 timing repetitions on random inputs, so the draw
-count for correctness may be one, one hundred, or something else. The three
-mechanisms also occupy different roles, a candidate-selection gate (Axon), a
-post-generation validation check (Prism), and a numerical-stability filter
-(Mirage); we measure the shared rule shape, not any one system's pipeline.
+discuss floating-point behavior. Axon proves equivalence over the reals with
+Z3 (1650x faster than Z3's floating-point theory on its own example:
+247.75 s versus 0.15 s) and validates compiled NKI kernels on Trainium
+against a reference implementation on random FP32 inputs at
+`rtol = atol = 1e-4`. Axon does not state how many independent inputs the
+numerical gate uses; its evaluation separately reports 100 timing
+repetitions on random inputs, so the correctness draw count may be one, one
+hundred, or something else. The three mechanisms occupy different roles, a
+candidate-selection gate (Axon), a post-generation validation check (Prism),
+and a numerical-stability filter (Mirage); we measure the shared rule shape,
+not any one system's pipeline.
 
 Two structural properties of the rule drive the measurements. It is
 reference-relative: the target is another floating-point implementation, not
@@ -150,145 +145,165 @@ the implementations; the float64 oracle is validated against 50-digit mpmath
 negative control establishes a nonzero instrument reading.
 
 **Mutant corpus (amended, registered before execution).** Six bug classes,
-eighteen instances. Four classes parameterize into the sixteen instances the
-tolerance frontier sweeps: dropped reduction elements (j in {1, 2, 4, 8, 16,
-32}), dropped contraction columns (j in {1, 2, 8, 32}), Bessel-style
-divisors (n minus j, j in {1, 2, 8}), and eps added to the standard
-deviation instead of the variance (eps in 1e-5 to 1e-3). Two gross
-single-instance classes run in the detection arm only: a missing
-online-softmax rescale and a dropped K-tile. The implemented column grid is
-sparser than the registered {1..32} set; the deviation is recorded in the
-errata. Float64 divergences span 4.1e-6 (eps placement) to 8.2e-1 (missing
-rescale), overlapping the valid corpus's floating-point disagreement range,
-which is what makes the discrimination question nondegenerate.
+eighteen instances. Four classes parameterize into the sixteen frontier
+instances: dropped reduction elements (j in {1,2,4,8,16,32}), dropped
+contraction columns (j in {1,2,8,32}), Bessel-style divisors (n-j, j in
+{1,2,8}), and eps added to the standard deviation instead of the variance
+(eps in 1e-5 to 1e-3). Two gross single-instance classes run in the
+detection arm only. The implemented column grid is sparser than registered;
+the deviation is recorded in the errata. Float64 divergences span 4.1e-6 to
+8.2e-1, overlapping the valid corpus's disagreement range, which makes the
+discrimination question nondegenerate.
 
-**Instrument.** Oracle: the reference computed in float64 on the same rounded
-inputs the test-precision run sees, excluding input quantization. Per cell:
-floor, total, differential, the direction ratio total/floor with absolute
-errors alongside (ratios are unstable as floor approaches zero), element
-exceedance fractions, and the rule verdict. An earlier ratio
+**Instrument.** Oracle: the reference computed in float64 on the same
+rounded inputs the test-precision run sees, excluding input quantization.
+Per cell: floor, total, differential, the direction ratio total/floor with
+absolute errors alongside (ratios are unstable as floor approaches zero),
+element exceedance fractions, and the rule verdict. An earlier ratio
 (differential/floor) was direction-blind and is retired; the errata records
 the misreading it caused.
 
-**Protocol labels.** Analyses are marked registered (in the original claim),
-amended (registered by dated amendment before execution: the mutant arm, the
-tolerance frontier, the K extension, the decomposition, the library
-reference, the C1-C3 pass, and the exact separability computation E5), or
-exploratory (single-draw sweeps that motivated later
-registered runs). Predictions precede every run in the committed log.
+**Evidence classes.** Claims below signal their evidence type by verb.
+Recorded facts about the measured corpus use "observed," "on all recorded
+draws," "on the measured corpus," and may be stated exactly. Statistical
+estimates carry rates with Wilson 95% intervals and "estimated" or
+"consistent with." Generalizations beyond the backend, model, or corpus use
+"on our backend," "suggests," or "may transfer," and carry scope
+qualifiers.
+
+**Protocol labels.** Analyses are marked registered (in the original
+claim), amended (registered by dated amendment before execution: the mutant
+arm, the tolerance frontier, the K extension, the decomposition, the
+library reference, the C1-C3 pass, the separability computations E5-E6, and
+the grid completion E7), or exploratory (single-draw sweeps that motivated
+later registered runs). Predictions precede every run in the committed log.
 
 ## 4. Findings
 
-**F1 (amended). Rejection of the valid tiled matmul reaches contraction
-widths used by deployed models under our pinned test geometry, and the mechanism is near-zero elements under a
-fixed absolute floor.** Under the literal elementwise rule at M=N=64, unit
-scale, 100 draws per point: 0/100 rejections at K=2048 [0-4%], 48/100 at
-K=4096 [38-58%], 100/100 at K=11008 [96-100%]. K=4096 and 11008 are the
-projection and MLP contraction widths of Llama-2-7B. In failing draws the
-violation concentrates on elements far below the tensor median (750x in the
-diagnosed case), where the relative allowance vanishes; tensor-scale
-relative disagreement stays near 1e-6 throughout, so no tensor-scale
-relative statistic predicts the verdict. A simple independence approximation over the rule's any-element quantifier,
-from the measured per-element exceedance of 3.42e-05 at K=512, gives 13.1%,
+**F1. Rejection of the valid tiled matmul reaches contraction widths used
+by deployed models under our pinned test geometry.** The mechanism, which
+is backend-independent in kind: near-zero output elements lose the relative
+allowance, accumulated rounding disagreement grows with reduction length,
+and the any-element aggregation turns rare element violations into tensor
+rejection (in diagnosed failing draws, one element in 4096, its magnitude
+750x below the tensor median). The measured onset, which is
+backend-specific: on our PyTorch/Ampere-M3 backend under the literal
+elementwise rule at M=N=64, 100 draws per cell:
+
+| K | unit scale | sigma 2.67 |
+|---|---|---|
+| 512 | 0/100 [0-4%] | 11/100 [6-19%] |
+| 1024 | 0/100 [0-4%] | 69/100 [59-77%] |
+| 2048 | 0/100 [0-4%] | 100/100 [96-100%] |
+| 4096 | 48/100 [38-58%] | 100/100 [96-100%] |
+| 11008 | 100/100 [96-100%] | 100/100 [96-100%] |
+
+K=4096 and 11008 are the projection and MLP contraction widths of
+Llama-2-7B; the sigma column uses scale-matched gaussian inputs (sigma
+2.67, matching the measured activation scale), and the onset falls roughly
+fourfold from its unit-scale position. Rejection is non-decreasing along
+both axes (the sigma axis at K=512 reads 0, 0, 1, 16, 74 per 100 at sigma
+0.5 to 4.0). Tensor-scale relative disagreement stays near 1e-6 throughout,
+so no tensor-scale relative statistic predicts the verdict. A simple
+independence approximation over the rule's any-element quantifier, from the
+measured per-element exceedance of 3.42e-05 at K=512, gives 13.1%,
 consistent with the observed [9-22%]; dependence among output elements is
-not established either way. Scale and contraction length compound: with scale-matched gaussian inputs
-(sigma 2.67, matching the measured activation scale), rejection reads 11/100 at K=512, 69/100 at K=1024, and
-100/100 at K=2048 and K=4096, so the onset falls roughly fourfold from its
-unit-scale position, and the rate is non-decreasing along both axes (the
-sigma axis at K=512 reads 0, 0, 1, 16, 74 per 100 at sigma 0.5 to 4.0). A correction from this revision: an earlier version reported
-"fails at K=2048" by comparing the maximum absolute difference against
-`atol` alone, ignoring the `rtol` term, the same quantity confusion this
-paper criticizes; the corrected measurement moves the onset to K=4096 and
-is recorded in the errata.
+not established either way. A correction preserved from an earlier
+revision: a prior "fails at K=2048" verdict came from comparing maximum
+absolute difference against `atol` alone, ignoring the `rtol` term, the
+same quantity confusion this paper studies; the errata records it.
 
-**F2 (amended). The tolerance frontier contains no separator, and the
-published constant sits on the optimum plateau.** Over all 64 (atol, rtol)
-grid points from 1e-8 to 1e-1, with 50 draws per program: no point achieves
-zero valid-rewrite rejection and zero mutant miss. The minimum total error is a three-point
-plateau: (1e-4, 1e-4), (1e-4, 1e-3), and (1e-4, 1e-2) tie at 0% valid
-rejection (unit scale) plus a 6.25% corpus miss fraction, meaning 1 of the
-16 frontier instances, equivalently 50 of 800 mutant draws, all from the
-eps-1e-5 bug. No grid point beats the plateau, and the exact feasibility
-computation (E5, registered) extends the result to the continuum: over the
-recorded per-element errors, no (atol >= 0, rtol <= 100) accepts every valid
-draw while rejecting every mutant draw; all 400 inter-sample intervals carry
-a convexity certificate and sup(G - max(F, 0)) = -3.5e-05. Axon's published constant is one of the three, and atol
-is the binding coordinate, which is the near-zero-element mechanism
-restated: the decisive elements sit where the allowance is atol alone, so
-rtol barely moves the optimum. The 6.25% miss is precisely the eps-1e-5 bug
-evading all 50 of its draws (its worst violation profile, 6.8e-5, sits
-below every threshold that admits the valid corpus). Gross mutants are
-caught on every draw at every reasonable point. Two readings, both
-supported: the published constant is not miscalibrated, it is Pareto-optimal on the
-tested grid; and the family is unable to separate the classes on the
-recorded corpus, exactly and not merely at sampled points, because a real bug's
-disagreement signature lies inside the disagreement range of valid
-rewrites. The bug's severity is input-dependent
-(it grows as row variance approaches eps), so this is a statement at the
-measured input statistics, and an oracle-referenced check with a
-condition-aware budget could see it where the sampled rule cannot; whether a
-principled budget at these statistics actually resolves 4.1e-6 is not
-demonstrated here. Under scale-matched
-gaussian inputs at sigma 2.67 the picture is unchanged: the five gross mutants stay at 100/100 detection and the eps bug
-evades all 100 draws, its float64 divergence shrinking to 2.46e-6, the
-direction the registered mechanism predicts.
+**F2. No mixed absolute-relative tolerance separates the measured corpus,
+under either cross-draw quantifier.** On the recorded per-element errors,
+with AV(r) the smallest atol accepting every valid draw at relative
+tolerance r: under criterion EVERY (each mutant draw rejected), no
+(atol >= 0, rtol <= 100) separates; all 400 inter-sample intervals carry a
+convexity certificate and the supremum of the separation gap is -3.5e-05.
+Under criterion SOME (each mutant caught on at least one recorded draw),
+the result is the same, with the gap narrowing to -4.0e-06: the weaker
+quantifier comes within 4 millionths of admitting a separator but never
+does. The cross-draw aggregation rule, which no source paper states, moves
+the separation margin ninefold. On the 64-point grid, the minimum total
+error is a three-point plateau, (1e-4, 1e-4), (1e-4, 1e-3), (1e-4, 1e-2),
+at 0% valid rejection (unit scale) plus a 6.25% mutant-instance miss
+fraction, meaning 1 of the 16 frontier instances, equivalently 50 of 800
+mutant draws, all from the eps-1e-5 bug; this fraction describes the
+constructed corpus, not any candidate population. Axon's published constant
+lies on the plateau and atol is the binding coordinate, the
+near-zero-element mechanism restated. The evading bug's severity is
+input-dependent (it grows as row variance approaches eps), so detection
+statements hold at the measured input statistics; an oracle-referenced
+check with a condition-aware budget could see it where the sampled rule
+cannot, though whether a principled budget resolves 4.1e-6 at these
+statistics is not demonstrated. Under scale-matched gaussian inputs at
+sigma 2.67 the picture is unchanged: five gross mutants at 100/100
+detection, the eps bug evading all 100 draws, its divergence shrinking to
+2.46e-6 as the registered mechanism predicts.
 
-**F3. The verdict and the direction of the accuracy comparison depend on
-the reference implementation.** Against three references for the same
-online-softmax candidate at fp16 (absolute oracle errors in parentheses):
-sequential reference, total/floor = 0.07 (6.0e-4 vs 8.9e-3), rule fails the
-candidate; strided-tree reference, 0.62 (6.0e-4 vs 9.7e-4), rule passes;
-`torch.sum` reference, 1.64 (6.0e-4 vs 3.7e-4), rule passes. At bf16 the
-ratios are 0.02, 1.92, and 2.14. The same candidate is 15x closer, 1.6x
-closer, or 1.6x farther from the oracle depending on an implementation
-choice no paper specifies, and the verdict flips with it. Under 100 draws
-per precision the verdicts carry intervals: at fp16 the candidate fails the
-sequential reference on 100/100 draws [96-100%] and passes the tree and
-torch.sum references on 98/100 [93-99%] and 99/100 [95-100%]; at bf16 it
-fails all three on 100/100. The mean floors order seq > tree > torch.sum,
-but the per-draw ordering holds on only 80/100 (fp16) and 85/100 (bf16)
-draws: the ranking of references is itself draw-dependent. `torch.sum`'s smaller floor is consistent with a different internal
-accumulation strategy, which we do not characterize here; FPRev
-independently demonstrates that such accumulation orders are implementation
-properties that are often undocumented. Reference-relative validation also penalizes differing rather than
-being wrong: the cells where our two gate definitions disagree are the cells
-where the candidate is closer to the oracle than its reference.
+**F3. Two plausible references reverse the direction of the accuracy
+comparison; a sequential reference magnifies it to 15x.** Observed on the
+measured corpus at fp16, for the same online-softmax candidate (absolute
+oracle errors in parentheses): against the strided-tree reference the
+candidate is 1.6x closer to the oracle than its reference (6.0e-4 vs
+9.7e-4) and the rule passes it on 98/100 draws [93-99%]; against
+`torch.sum` it is 1.6x farther (6.0e-4 vs 3.7e-4) and the rule passes it on
+99/100 [95-100%]; against sequential accumulation it is 15x closer (6.0e-4
+vs 8.9e-3) and the rule fails it on 100/100 [96-100%]. At bf16 the ratios
+are 1.92, 2.14, and 0.02, and the rule fails all three on 100/100. The mean
+floors order seq > tree > torch.sum, but the per-draw ordering holds on
+only 80/100 (fp16) and 85/100 (bf16) draws: the ranking of references is
+itself draw-dependent. `torch.sum`'s smaller floor is consistent with a
+different internal accumulation strategy, which we do not characterize
+here; FPRev independently demonstrates that such accumulation orders are
+implementation properties that are often undocumented. Reference-relative
+validation penalizes differing rather than being wrong: the cells where our
+two gate definitions disagree are exactly the cells where the candidate is
+closer to the oracle than its reference.
 
-**F4. Detection is a rate, and the papers do not permit computing it.** The
-valid K=512 tiling trips the rule on 14/100 draws [9-22%] under scale-matched
-gaussian inputs (sigma 2.67) and 0/100 at unit scale (upper bound 4%). Our
-own exploratory single-draw sweep missed it; the registered repeated-draw
-run caught it, and an independent registered replication in the K-by-scale
-grid reads 16/100 [10-24%], containing the earlier 14%. Axon specifies random-input validation but not the draw count
-for the numerical gate (its evaluation separately reports 100 timing
-repetitions on random inputs); Prism states random equivalence testing
-without count or tolerance; Mirage states filtering without threshold or
-protocol. These absences were verified against the papers with a
-positive-control search method after an earlier tooling failure produced a
-false absence claim.
+**F4. Detection is a rate, and neither the draw count nor the cross-draw
+rule is stated by any source paper.** Observed: the valid K=512 tiling
+trips the rule on 14/100 draws [9-22%] under scale-matched gaussian inputs
+(sigma 2.67) and 0/100 at unit scale (upper bound 4%); an independent
+registered replication reads 16/100 [10-24%]. Our own exploratory
+single-draw sweep missed the failure; the registered repeated-draw run
+caught it. Two aggregation questions govern what such rates mean. Within a
+tensor, Axon's rule is elementwise and unambiguous: one violating element
+rejects the tensor. Across random inputs, everything is unstated: the
+number of draws, whether a candidate must pass all of them, and how errors
+aggregate. As hypothetical consequences under IID draws and an
+all-draws-must-pass rule, not measurements of any system: a valid rewrite
+with a 14% per-draw rejection rate survives 20 draws with probability near
+0.86^20, about 4.9%; and a 0/100 observation is consistent both with a true
+catch probability of zero (more draws never help) and with a rate at its
+3.7% upper bound, where 100 draws would catch the bug with probability near
+97.7%. A reported draw count without its cross-draw aggregation rule is
+still not enough to reproduce a validator.
 
 **F5. An FP32-class fixed tolerance does not transfer to reduced
-precision.** An untransformed matmul deviates from exact arithmetic on its own inputs
-(scale-relative: maximum absolute difference over maximum oracle magnitude)
-by 3.95e-4 at fp16 and 3.10e-3 at bf16, at or above the 1e-4
-scale, and all 36 reduced-precision cells fail a 1e-4-class rule. The
-direction ratio shows the failures are dominated by reference and precision
-error rather than by the rewrites: against the sequential reference the
-reordering candidates are 3x to 73x closer to the oracle than the reference
-they fail against (8x to 62x at the mlp shapes). Axon scopes its constant to FP32 explicitly; Prism's
-benchmarks are half-precision with no stated threshold; so this finding is
-a constraint on any future stated rule, not evidence that a system's actual
-criterion fails.
+precision.** An untransformed matmul deviates from exact arithmetic on its
+own inputs (scale-relative: maximum absolute difference over maximum oracle
+magnitude) by 3.95e-4 at fp16 and 3.10e-3 at bf16, and all 36
+reduced-precision cells fail a 1e-4-class rule. The direction ratio shows
+these failures are dominated by reference and precision error rather than
+by the rewrites: against the sequential reference the reordering candidates
+are 3x to 73x closer to the oracle than the reference they fail against (8x
+to 62x at the mlp shapes). Axon scopes its constant to FP32 explicitly;
+Prism's benchmarks are half-precision with no stated threshold; so this
+characterizes what would happen if an FP32-class threshold were
+transferred, not what any system's actual criterion does.
 
-**F6. Real activations are benign in this model.** Every real-activation
-cell passes at fp32 with at least 10x headroom, including post-LayerNorm row
-sums at condition number 368,927, 400x beyond unit-gaussian reach
-(condition rose 400x, error rose 11x). The fused-variance hazard does not
-materialize because the captured residual stream is empirically near
-zero-mean per row (cancellation statistic at most 0.016), an observation
-about this 6-layer pre-norm model, not an architectural guarantee. The
-evidence base is one small character-level model and one batch; broader
-pretrained-model coverage is the highest-value extension.
+**F6. Real activations are benign in this model.** Observed: every
+real-activation FP32 cell passes with at least 10x headroom, including
+post-LayerNorm row sums at condition number 368,927, 400x beyond
+unit-gaussian reach (condition rose 400x, error rose 11x). The
+fused-variance hazard does not materialize because the captured residual
+stream is empirically near zero-mean per row (cancellation statistic at
+most 0.016), an observation about this 6-layer pre-norm model, not an
+architectural guarantee. Matching scale is not matching distribution: the
+scale-matched gaussian draws that reject in F1 share only variance with
+these activations, and the real tensors pass. The evidence base is one
+small character-level model and one batch; broader pretrained-model
+coverage is the highest-value extension.
 
 **F7. Inputs that force valid-corpus failures are far outside the observed
 activation distribution.** Constructed cancellation inputs trip the rule on
@@ -298,70 +313,60 @@ near 2x tolerance. Online softmax is immune under every strategy measured;
 it is also the pair the verifiers handle worst, by our inference from their
 mechanisms: its running max is not a Lax operator, so Mirage partitions
 around it, and Axon's uninterpreted exp blocks the rescale identity;
-neither paper classifies the transformation itself. Exceptional regimes (NaN, Inf,
-subnormals, overflow) are not covered by our gaussian and activation inputs
-and remain open.
+neither paper classifies the transformation itself. Exceptional regimes
+(NaN, Inf, subnormals, overflow) are not covered and remain open.
 
 ## 5. Threats to validity
 
 **Backend and reimplementation (F1-F5).** No emitted kernel from any system
-is executed; PyTorch reimplementations on Ampere/M3 stand in, while FPRev
-and FTTN document that real accumulation orders and extra-precision
-behavior vary across libraries and accelerators. The frontier and K results
-characterize the rule on our backend; magnitudes on Trainium or cuBLAS
-paths may differ.
+is executed; PyTorch reimplementations on Ampere/M3 stand in, and measured
+onsets (F1) and margins (F2) are backend-conditioned. FPRev and FTTN
+document that real accumulation orders and extra-precision behavior vary
+across libraries and accelerators.
 
 **Mutant severity is input-dependent (F2).** Detection rates are statements
-at the stated input statistics; the evading bug grows as variance
-approaches eps.
+at the stated input statistics.
 
-**Reference coverage (F3).** Three references (sequential, strided-tree,
-`torch.sum`) bound the effect on one backend; production references are
-undocumented multiway trees.
+**Reference coverage (F3).** Three references bound the effect on one
+backend; production references are undocumented multiway trees.
 
 **One model, one batch (F6).** A pretrained-transformer activation corpus
 across layers and batches is the single most valuable missing dataset.
 
 **Oracle and ratios.** The float64 oracle is validated at small shapes;
-direction ratios are reported with absolute errors because they are
-unstable as floor approaches zero. Exploratory single-draw cells exist and
-are labeled; headline claims rest on registered repeated-draw runs.
+direction ratios are reported with absolute errors. Exploratory single-draw
+cells exist and are labeled; headline claims rest on registered
+repeated-draw runs.
 
 **Selection amplification (not measured).** A validator inside a
 superoptimizer is queried repeatedly by an adaptive candidate-generation
 process, so rare misses may be amplified by selection. Quantifying that
 requires a candidate distribution or an actual search loop; it is the
-natural next registered experiment, and the corpus miss fraction above is
-not an estimate of any candidate-population miss probability.
+natural next registered experiment, and the mutant-instance miss fraction
+above is not an estimate of any candidate-population miss probability.
 
 ## 6. Implications
 
-**For Axon.** Its constant is, on our corpus, tied for the optimum of its
-rule family (F2), and the family still cannot separate the classes; its rule's
-verdict becomes shape-dependent at K=4096 for a system whose proofs are
-shape-generic (F1). What the measurements support reporting: the draw
-count, the reference implementation and its accumulation order, and a
-justified error budget appropriate to the operator, shape, and precision,
-with accumulation dependence where applicable, of the kind derived for
-mixed-precision GEMM by Blanchard et al. and Higham and Mary. An oracle
-comparison could preserve accuracy-improving candidates (F3); a fixed
-reference-relative rule cannot.
+**For Axon.** Its constant is, on our corpus, on the optimum plateau of its
+rule family (F2), and the family cannot separate the classes under either
+cross-draw quantifier; its rule's verdict becomes shape-dependent within
+deployed contraction widths on our backend (F1). An oracle comparison could
+preserve accuracy-improving candidates (F3); a fixed reference-relative
+rule cannot.
 
 **For Prism.** Half-precision evaluation with an unstated threshold sits
-exactly where F5 shows fixed FP32-class constants do not transfer; a stated and justified tolerance for its half-precision regime would make
-its random testing interpretable.
+where F5 shows fixed FP32-class constants do not transfer; a stated and
+justified tolerance for its half-precision regime would make its random
+testing interpretable.
 
 **For Mirage.** The v3 numerical-stability filter is the right mechanism;
-stating its threshold, reference, and draw count would make it the first
+stating its threshold, reference, and draw protocol would make it the first
 fully specified floating-point acceptance rule in this literature.
 
 **Method integrity.** Four of our own results were retracted or corrected
-during this study: a mischaracterization of Mirage's testing (stale paper
-version), a direction-blind metric interpretation refuted by our own
-records, an unsupported single-draw attribution, and, in this revision, a
-K=2048 rejection verdict produced by comparing a maximum absolute
-difference against `atol` alone, the same quantity confusion this paper
-criticizes in tolerance reporting. Every correction moved against our
+during this study, including a K=2048 rejection verdict produced by
+comparing a maximum absolute difference against `atol` alone, the same
+quantity confusion this paper studies. Every correction moved against our
 registered claim. The errata and dated run log are part of the artifact.
 
 ## 7. Related work
@@ -370,54 +375,59 @@ TASO began validation-adjacent practice in tensor superoptimization, using
 random-tensor execution to identify candidate-equivalent graphs before
 formally verifying substitutions. TensorRight develops stronger idealized
 rewrite verification; Mirage, Prism, and Axon combine stronger semantic
-reasoning with residual empirical validation of generated implementations. TTrace is the closest adjacent study: in
-distributed-training validation it shows fixed `torch.allclose` tolerances
-produce false positives, false negatives, or both, and replaces them with
-perturbation-derived dynamic tolerances; our subject differs (superoptimizer
-acceptance rules, real-equivalent rewrites and injected bugs, reference and
-shape sensitivity), and our frontier result complements its diagnosis by
-showing the best fixed points on our corpus
-already include the published constant. Concurrent 2026 measurements reach
-adjacent conclusions on neighboring workloads: fixed-shape small-sample
-allclose oracles pass seeded-bug GPU kernels (the Correctness Illusion
-corpus), per-operator and per-dtype tolerance calibration trades detection
-against false positives, and input-generation strategy materially changes
-which kernel bugs surface; none studies the superoptimizer acceptance stage
-or reference sensitivity.
-FPRev infers the undocumented accumulation orders of real libraries and
-accelerators (multiway trees on tensor cores), and FTTN shows accelerator
-numerical features are under-documented across vendors; both make F3's
-reference sensitivity a systems fact rather than a constructed example.
-LifeJacket and Alive-FP verify LLVM floating-point optimizations under
-actual FP semantics and found real incorrect optimizations, precedent for
-evaluating both valid and invalid transformations; Minotaur brings formal
-FP reasoning to SIMD superoptimization. NNSmith treats input generation as
-central to exposing compiler bugs, as our scale and distribution findings
-do for validation. Herbie rewrites for accuracy, the direction sensitivity
-reference-relative rules lack. FPBench standardizes accuracy measures for
-FP tools, the measurement-definition problem our oracle and metric choices
-address. Rounding-error analyses (Goldberg; Higham; SATIRE; Blanchard et
-al.; Higham and Mary) derive the accumulation-dependent budgets a specified
-rule could use in place of a constant. Mytkowicz et al. showed performance
-evaluation produces wrong conclusions from unexamined setup; this paper
-applies the same scrutiny to correctness validation.
+reasoning with residual empirical validation of generated implementations.
+TTrace is the closest adjacent study: in distributed-training validation it
+shows fixed `torch.allclose` tolerances produce false positives, false
+negatives, or both, and replaces them with perturbation-derived dynamic
+tolerances; our subject differs (superoptimizer acceptance rules,
+real-equivalent rewrites and injected bugs, reference and shape
+sensitivity), and our envelope analysis complements its diagnosis by
+showing no fixed pair separates our corpus at all. Concurrent 2026
+measurements reach adjacent conclusions on neighboring workloads:
+fixed-shape small-sample allclose oracles pass seeded-bug GPU kernels (the
+Correctness Illusion corpus), per-operator and per-dtype tolerance
+calibration trades detection against false positives, and input-generation
+strategy materially changes which kernel bugs surface; none studies the
+superoptimizer acceptance stage or reference sensitivity. FPRev infers the
+undocumented accumulation orders of real libraries and accelerators, and
+FTTN shows accelerator numerical features are under-documented across
+vendors; both make F3's reference sensitivity a systems fact. LifeJacket
+and Alive-FP verify LLVM floating-point optimizations under actual FP
+semantics and found real incorrect optimizations; Minotaur brings formal FP
+reasoning to SIMD superoptimization. NNSmith treats input generation as
+central to exposing compiler bugs. Herbie rewrites for accuracy, the
+direction sensitivity reference-relative rules lack. FPBench standardizes
+accuracy measures for FP tools. Rounding-error analyses (Goldberg; Higham;
+SATIRE; Blanchard et al.; Higham and Mary) derive the
+accumulation-dependent budgets a specified rule could draw on. Mytkowicz et
+al. showed performance evaluation produces wrong conclusions from
+unexamined setup; this paper applies the same scrutiny to correctness
+validation.
 
 ## 8. Conclusion
 
-Measured on a representative rule: rejection of a valid rewrite begins
-within contraction widths used by deployed 7B-class models under our pinned
-geometry, and the onset moves fourfold with input scale; no mixed
-absolute-relative tolerance separates the corpus at all, the best grid
-points include the one already published, and it still passes a real bug on
-every draw; the verdict and the direction of the accuracy
-comparison move with an unspecified reference implementation; and the
-detection rate depends on scale and draw count that no paper reports. Real-activation FP32 cells pass everywhere we measured, and no evidence indicates any
-system has shipped an incorrect kernel. The constructive reading is a
-reporting checklist: reference implementation and accumulation order, draw
-count, precision scope, and a justified, operator- and
-precision-appropriate error budget. With those
-stated, this stage becomes as interpretable as the verifiers above it; the
-measurements here are what their absence currently costs.
+A numerical validation result is interpretable only relative to a specified
+validation protocol, and the measurements here show that individual
+protocol coordinates materially change the verdict: contraction length and
+output multiplicity (F1), tolerance constants and the cross-draw quantifier
+(F2), reference implementation (F3), draw count (F4), precision (F5), and
+input scale and distribution (F1, F6, F7). On the measured corpus, no
+nonnegative mixed absolute-relative tolerance with rtol <= 100 separates
+real-equivalent rewrites from injected bugs under either cross-draw
+semantics. Real-activation FP32 cells passed everywhere measured, and no
+evidence indicates any system has shipped an incorrect kernel.
+
+The constructive conclusion is a reporting standard, not a replacement
+validator. A floating-point acceptance result should specify at least: (1)
+the reference implementation and its relevant accumulation behavior; (2)
+the precision; (3) the input distribution and scale; (4) the per-element
+comparison function and constants; (5) the within-tensor aggregation rule;
+(6) the number of independent draws; (7) the cross-draw aggregation rule;
+and (8) a justification for the numerical error budget in the operator,
+shape, and precision regime. This paper does not prescribe one universal
+validator; it identifies the information necessary to make a validator's
+result reproducible and interpretable, and measures what remains
+undetermined when that information is absent.
 
 ## References
 

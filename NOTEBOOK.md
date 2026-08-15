@@ -232,3 +232,26 @@ Entries are chronological. Full prose versions of all entries are preserved in g
   tensor-core explanation replaced, the selection-amplification extrapolation
   deleted, TensorRight split out, justified-budget wording, frontier heatmap
   added to the tex.
+
+## 2026-08-14: review #5; rev 5a consolidation (E6, E7)
+
+- External review #5 (Rev. 5 direction) archived in agent-notes. Adopted
+  nearly wholesale: protocol-coordinate framing, evidence-class verbs,
+  two-criterion envelope analysis, F3 reorder, F4 two-quantifier form,
+  8-item reporting standard, second figure, grid completion.
+- E6 registered before running; prediction held. No separator under EITHER
+  cross-draw quantifier: EVERY sup gap -3.5e-05 (400/400 certified), SOME
+  sup gap -4.0e-06 (400/400 certified). The quantifier moves the margin
+  ninefold; SOME comes within 4e-06 of separating but never does. The
+  cross-draw aggregation rule is now a measured protocol coordinate.
+- E7 registered before running; predictions held: unit K=1024 0/100 [0-4%],
+  sigma-2.67 K=11008 100/100 [96-100%]. Table 1 is a complete rectangle.
+- Paper rebuilt as rev. 5a: abstract in the review's target structure,
+  protocol taxonomy in the introduction with finding-to-coordinate map,
+  evidence-class verb conventions, F1 mechanism/onset split with the full
+  two-scale table and a K-by-scale figure, F2 with both quantifiers and
+  the mutant-instance miss fraction, F3 led by the tree/torch.sum sign
+  reversal, F4 with the labeled hypothetical IID calculations, conclusion
+  as the 8-item protocol reporting standard. paper.tex mirrors, two
+  figures. Next per the review's sequencing: outside expert review, then
+  rev 5b only if justified.
