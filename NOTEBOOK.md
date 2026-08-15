@@ -339,3 +339,34 @@ sentence, the Axon reporting list, F7 regimes, and the enumerated Method
 integrity paragraph, which now includes the Theorem 2 misread. No claim
 changed strength; the seven protected claims verified present after the
 pass.
+
+## 2026-08-15 - Registered before running: V1, D1, D2
+
+Three checks from the pre-expert triage, predictions first.
+
+V1, independent verification of E5/E8. A second implementation computes
+all four class envelopes by direct max over every recorded element at
+every grid point, no Pareto prefilter, no shared envelope code, straight
+from the Method definitions. Prediction: agreement with
+results/separability.json to 1e-12 absolute on every envelope value at
+every grid point, identical separator and certificate counts at all four
+corners, identical sup gaps to 1e-12. Synthetic known-answer tests: the
+machinery classifies a constructed separator, a constructed
+non-separator, and a hidden between-samples separator correctly, the
+last landing uncertified. If any disagreement: report before use, fix,
+rerun, record here.
+
+D1, K-differential diagnostic for the F1 mechanism attribution.
+Per K in {512, 1024, 2048, 4096, 11008}, 20 unit-scale draws at the
+pinned M=N=64 geometry, recording per-draw max abs diff between the
+K-tiled variant and the untransformed reference and the reference
+magnitude at the argmax element. Prediction: the median max-diff grows
+broadly and monotonically with K, no isolated jump at one width, and
+argmax elements sit well below the tensor median magnitude.
+
+D2, oracle spot-check for the F3 headline cell. On 3 draws of the F3
+softmax cell, recompute floor and total against a 50-digit mpmath
+oracle for the tree, torch.sum, and sequential references. Prediction:
+the float64-oracle error statistics agree with the 50-digit ones to
+better than 1e-6 relative, and every F3 ratio is unchanged at the
+reported precision.

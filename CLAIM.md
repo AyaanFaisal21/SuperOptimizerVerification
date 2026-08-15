@@ -453,3 +453,13 @@ to supersets including the two gross detection-arm instances.
 predicted and closed over rtol >= 0. The fourth-corner prediction is
 falsified: (F_any, G_some) separates on rtol in [7.8e-03, 7.9] with
 margin +9.5e-06. Details in NOTEBOOK.md and paper F2.
+
+### 2026-08-15 (fifth amendment) - diagnostics D1, D2 and verification V1
+
+Registered before execution; predictions in NOTEBOOK.md same date. D1:
+per-K differential trace at the pinned F1 geometry (20 draws per K,
+max abs diff and argmax reference magnitude). D2: 50-digit oracle
+spot-check of the F3 headline cell, 3 draws, three references. V1:
+independent no-Pareto recomputation of the E5/E8 envelopes plus
+synthetic known-answer tests. No threshold moves; no new claims are
+registered; these check existing ones.
