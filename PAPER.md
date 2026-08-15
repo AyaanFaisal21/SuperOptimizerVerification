@@ -1,8 +1,8 @@
 # Characterizing Floating-Point Validation Rules for Tensor Superoptimization
 
-Ayaan Faisal. Working draft of 2026-08-14 (toward rev. 4: corrections from
-external review 3, a full-text re-verification of every reference).
-Artifact: this repository.
+Ayaan Faisal. Rev. 4 of 2026-08-14: corrections from external review 3 (a
+full-text re-verification of every reference) plus the registered C1-C3
+measurement-pass results. Artifact: this repository.
 
 ## Abstract
 
@@ -22,7 +22,9 @@ draw counts, under a pre-registered protocol with dated amendments. Findings:
 elements meeting accumulation-dependent error growth, and reaches the
 contraction widths of deployed models: at M=N=64 the valid tiled matmul is
 rejected on 0/100 draws at K=2048, 48/100 [38-58%] at K=4096, and 100/100
-[96-100%] at K=11008, the projection and MLP widths of Llama-2-7B; (2) a
+[96-100%] at K=11008, the projection and MLP widths of Llama-2-7B, and at
+the measured activation scale the onset falls roughly fourfold, to K near
+1024; (2) a
 tolerance frontier over 64 (atol, rtol) points contains no separator: the
 minimum is a plateau containing Axon's own constant, which rejects no valid
 rewrite at unit scale yet passes a real eps-placement bug on every draw, so
@@ -30,7 +32,8 @@ the miss is structural to the rule family, not a calibration error; (3) the verd
 direction of the accuracy comparison depend on the reference implementation:
 against sequential, tree, and `torch.sum` references, the same online-softmax
 candidate is 15x closer, 1.6x closer, and 1.6x farther from a float64 oracle,
-respectively; (4) detection is a rate that current papers do not permit
+respectively (100-draw fail rates 100%, 2%, and 1% at fp16), and even the
+per-draw ranking of references flips on one draw in five; (4) detection is a rate that current papers do not permit
 computing: a valid rewrite trips the rule on 14% [9-22%] of draws at measured
 activation scale and 0/100 at unit scale, and the tensor-level rate is
 predicted by per-element exceedance under independence (13.1% predicted,
@@ -167,7 +170,8 @@ the misreading it caused.
 **Protocol labels.** Analyses are marked registered (in the original claim),
 amended (registered by dated amendment before execution: the mutant arm, the
 tolerance frontier, the K extension, the decomposition, the library
-reference), or exploratory (single-draw sweeps that motivated later
+reference, and the C1-C3 pass: reference sensitivity under draws, detection
+at activation scale, the K-by-scale grid), or exploratory (single-draw sweeps that motivated later
 registered runs). Predictions precede every run in the committed log.
 
 ## 4. Findings
@@ -185,7 +189,11 @@ relative statistic predicts the verdict. The tensor-level rate is the
 per-element exceedance aggregated by the rule's any-element quantifier:
 measured per-element exceedance 3.42e-05 at K=512 and activation scale
 predicts a 13.1% tensor rate under independence, inside the observed
-[9-22%]. A correction from this revision: an earlier version reported
+[9-22%]. Scale and contraction length compound: at the measured activation
+scale (sigma 2.67), rejection reads 11/100 at K=512, 69/100 at K=1024, and
+100/100 at K=2048 and K=4096, so the onset falls roughly fourfold from its
+unit-scale position, and the rate is non-decreasing along both axes (the
+sigma axis at K=512 reads 0, 0, 1, 16, 74 per 100 at sigma 0.5 to 4.0). A correction from this revision: an earlier version reported
 "fails at K=2048" by comparing the maximum absolute difference against
 `atol` alone, ignoring the `rtol` term, the same quantity confusion this
 paper criticizes; the corrected measurement moves the onset to K=4096 and
@@ -213,7 +221,10 @@ rewrites. The bug's severity is input-dependent
 measured input statistics, and an oracle-referenced check with a
 condition-aware budget could see it where the sampled rule cannot; whether a
 principled budget at these statistics actually resolves 4.1e-6 is not
-demonstrated here.
+demonstrated here. At the measured activation scale the picture is
+unchanged: the five gross mutants stay at 100/100 detection and the eps bug
+evades all 100 draws, its float64 divergence shrinking to 2.46e-6, the
+direction the registered mechanism predicts.
 
 **F3. The verdict and the direction of the accuracy comparison depend on
 the reference implementation.** Against three references for the same
@@ -223,7 +234,13 @@ candidate; strided-tree reference, 0.62 (6.0e-4 vs 9.7e-4), rule passes;
 `torch.sum` reference, 1.64 (6.0e-4 vs 3.7e-4), rule passes. At bf16 the
 ratios are 0.02, 1.92, and 2.14. The same candidate is 15x closer, 1.6x
 closer, or 1.6x farther from the oracle depending on an implementation
-choice no paper specifies, and the verdict flips with it. `torch.sum`'s
+choice no paper specifies, and the verdict flips with it. Under 100 draws
+per precision the verdicts carry intervals: at fp16 the candidate fails the
+sequential reference on 100/100 draws [96-100%] and passes the tree and
+torch.sum references on 98/100 [93-99%] and 99/100 [95-100%]; at bf16 it
+fails all three on 100/100. The mean floors order seq > tree > torch.sum,
+but the per-draw ordering holds on only 80/100 (fp16) and 85/100 (bf16)
+draws: the ranking of references is itself draw-dependent. `torch.sum`'s
 floor beating our explicit tree is consistent with wider internal
 accumulation, exactly the undocumented reference property FPRev measures in
 real libraries, where tensor-core paths are (8+1)-term multiway trees on
@@ -235,7 +252,8 @@ where the candidate is closer to the oracle than its reference.
 valid K=512 tiling trips the rule on 14/100 draws [9-22%] at the measured
 activation scale (sigma 2.67) and 0/100 at unit scale (upper bound 4%). Our
 own exploratory single-draw sweep missed it; the registered repeated-draw
-run caught it. Axon specifies random-input validation but not the draw count
+run caught it, and an independent registered replication in the K-by-scale
+grid reads 16/100 [10-24%], containing the earlier 14%. Axon specifies random-input validation but not the draw count
 for the numerical gate (its evaluation separately reports 100 timing
 repetitions on random inputs); Prism states random equivalence testing
 without count or tolerance; Mirage states filtering without threshold or
