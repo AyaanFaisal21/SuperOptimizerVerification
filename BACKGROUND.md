@@ -52,3 +52,20 @@ If it does not, the gap is a correctness concern.
 - Axon: arXiv [2606.26344](https://arxiv.org/abs/2606.26344). Section 5.2
 - TensorRight: POPL '25. The SMT method Axon adapts
 - Ruler: arXiv [2108.10436](https://arxiv.org/abs/2108.10436), OOPSLA '21. Section 6.2
+
+## Provenance table
+
+Per-pair provenance as recorded in fpgap/corpus.py. Entries marked
+"our inference" are ours, not statements by the source papers.
+
+| pair | provenance |
+|---|---|
+| split_reduction | Prism; Mirage; megakernel/MPK |
+| reassociation | Prism; Mirage; Axon |
+| scalar_past_matmul | Axon; Prism |
+| layernorm_variance | Axon (in principle: provable over R) |
+| softmax_online | Prism (chunked form, its Fig. 2); Axon: rejected (our inference); Mirage: non-Lax, partitioned around (our inference) |
+| matmul_k_tiling | Prism; Axon; Mirage |
+
+Citations to sections, axioms, and operator definitions are in each
+pair's citation field in fpgap/corpus.py, with notes and hazards.
