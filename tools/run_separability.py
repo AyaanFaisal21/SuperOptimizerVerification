@@ -5,8 +5,9 @@ runs. E5 analyzed two (F, G) pairings; E8 completes the 2x2 box and closes
 the rtol tail.
 
 per draw, acceptance at (atol, rtol) is atol + rtol*|b|_i >= |g-b|_i for every
-element, so the draw's minimum accepting atol at rtol = r is the envelope
-T(r) = max_i(d_i - r*x_i) with d = |g-b|, x = |b|. T is a maximum of lines:
+element, so at rtol = r any real atol >= T(r) = max_i(d_i - r*x_i)
+accepts (d = |g-b|, x = |b|); atol >= 0 makes the admissible threshold
+max(T, 0), applied at comparison time. T is a maximum of lines:
 convex, piecewise linear, non-increasing (every slope -x_i <= 0). T is
 evaluated exactly from the Pareto set of the draw's (x, d) points.
 

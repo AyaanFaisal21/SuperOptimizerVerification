@@ -65,6 +65,17 @@ Rev. 5a attributed the K rejection rates to "our PyTorch/Ampere
 backend." The K extension and scale grids ran in float32 PyTorch on the
 Apple M3 CPU. The Ampere A10 verified corpus equivalence and hardware
 characterization only. Corrected in Rev. 5a.1.
+### 2.10 Mirage bound factor (Rev. 5a.1, corrected next day)
+
+Appendix A said the released q weakens Mirage's per-test acceptance
+bound by roughly 1.4x, treating the bound as proportional to 1/q. The
+paper's Theorem 2 bound, re-extracted verbatim from the v3 source, is
+8dk^4/q + q^(-1/k^2). The second term moves by (113/83)^(1/k^2), about
+1.02 to 1.08 for k in 2..4, so no universal factor exists. Corrected to
+the monotone statement the theorem does support: both terms grow as q
+falls, so the released configuration loosens the stated bound at every
+fixed (d, k). External review 7 caught this.
+
 ## 3. Tooling
 
 | Issue | Fix |

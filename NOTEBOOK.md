@@ -298,3 +298,28 @@ its tip is the audited 5c28cc6, so the audit covered the newest
 default-branch code. The main branch is older (ffe38df, 2026-04-17) and
 shows the same constants (167/83) and the same performance-only
 selection. Three branches now confirm. Appendix A updated.
+
+## 2026-08-15 - Review 7 fact-check before application
+
+Strenuous check of seven items; all seven survive, one against us in a
+form worth recording. Item 4: the v3 HTML source gives Theorem 2's
+bound verbatim as 8dk^4/q + q^(-1/k^2). Our appendix's 1.4x treated it
+as 1/q; the second term moves by (113/83)^(1/k^2), so no universal
+factor exists. Retracted (errata 2.10), replaced with the monotone
+loosening statement the theorem supports. The same fetch reconfirmed
+p=227/q=113, the single uniterated test, all-element comparison, and
+the 5.2 filter sentence, all verbatim. Item 1 confirmed: the T(r)
+definition needed the atol >= 0 clamp explicit; the computation already
+applied max(F, 0), so no rerun. Item 2 confirmed: k-of-n rules are
+coherent Boolean aggregations we did not analyze; claims rescoped to
+the two analyzed extremes, and F2 now names k-of-n as unanalyzed
+specification space (they evaluate the k-th order statistic of the same
+per-draw envelopes; genuinely open whether some intermediate k
+separates). Item 3 confirmed: the fourth pairing is class-conditioned;
+demoted from the abstract, reframed in F2. Items 5, 6, 7 confirmed:
+intro no longer claims variation of held-fixed coordinates, the
+tensor-scale statistic is named, references demonstrate rather than
+bound, and the appendix states what the audit found rather than what
+exists. No new experiments. Process note: the previous commit pushed
+the PAPER.md half alone after a patch-script anchor failed mid-run;
+this commit completes the tex, errata, and notebook half.
