@@ -167,9 +167,7 @@ discrimination question nondegenerate.
 rounded inputs the test-precision run sees, excluding input quantization.
 Per cell: floor, total, differential, the direction ratio total/floor with
 absolute errors alongside (ratios are unstable as floor approaches zero),
-element exceedance fractions, and the rule verdict. An earlier ratio
-(differential/floor) was direction-blind and is retired; the errata records
-the misreading it caused.
+element exceedance fractions, and the rule verdict.
 
 **Separability corpus and envelopes (E5, E8).** The exact analyses in F2
 run on one fixed recorded dataset, the separability corpus: the six valid
@@ -248,10 +246,7 @@ so no tensor-scale relative statistic predicts the verdict. A simple
 independence approximation over the rule's any-element quantifier, from the
 measured per-element exceedance of 3.42e-05 at K=512, gives 13.1%,
 consistent with the observed [9-22%]; dependence among output elements is
-not established either way. A correction preserved from an earlier
-revision: a prior "fails at K=2048" verdict came from comparing maximum
-absolute difference against `atol` alone, ignoring the `rtol` term, the
-same quantity confusion this paper studies; the errata records it.
+not established either way.
 
 **F2. No mixed absolute-relative tolerance separates the measured corpus
 under either coherent Boolean cross-draw semantics; per-draw selection
