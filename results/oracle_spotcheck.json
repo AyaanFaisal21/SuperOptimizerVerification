@@ -1,0 +1,81 @@
+{
+  "dps": 50,
+  "shape": [
+    512,
+    1024
+  ],
+  "rows": [
+    {
+      "tag": "e4-draw",
+      "online": {
+        "stat_f64_oracle": 0.0006025312960431827,
+        "stat_mp_oracle": 0.0006025312960431567,
+        "rel_deviation": 4.318589309888452e-14
+      },
+      "tree": {
+        "stat_f64_oracle": 0.0009692826593786455,
+        "stat_mp_oracle": 0.0009692826593785846,
+        "rel_deviation": 6.275129477239531e-14
+      },
+      "torch.sum": {
+        "stat_f64_oracle": 0.0003674952006838165,
+        "stat_mp_oracle": 0.00036749520068376796,
+        "rel_deviation": 1.3202362133832714e-13
+      },
+      "seq": {
+        "stat_f64_oracle": 0.00893800944697284,
+        "stat_mp_oracle": 0.00893800944697278,
+        "rel_deviation": 6.5988516272141125e-15
+      },
+      "worst_rel_deviation": 1.3202362133832714e-13
+    },
+    {
+      "tag": "seed-4242",
+      "online": {
+        "stat_f64_oracle": 0.0007606578148992463,
+        "stat_mp_oracle": 0.0007606578148992683,
+        "rel_deviation": 2.8934566463857824e-14
+      },
+      "tree": {
+        "stat_f64_oracle": 0.0004975767391155222,
+        "stat_mp_oracle": 0.000497576739115454,
+        "rel_deviation": 1.3705688246313796e-13
+      },
+      "torch.sum": {
+        "stat_f64_oracle": 0.00041200604070521304,
+        "stat_mp_oracle": 0.0004120060407051433,
+        "rel_deviation": 1.693383176616402e-13
+      },
+      "seq": {
+        "stat_f64_oracle": 0.013180501981881611,
+        "stat_mp_oracle": 0.013180501981881683,
+        "rel_deviation": 5.396126992190269e-15
+      },
+      "worst_rel_deviation": 1.693383176616402e-13
+    },
+    {
+      "tag": "seed-9099",
+      "online": {
+        "stat_f64_oracle": 0.0008161478252662203,
+        "stat_mp_oracle": 0.0008161478252662353,
+        "rel_deviation": 1.8332450956931993e-14
+      },
+      "tree": {
+        "stat_f64_oracle": 0.0007332667035945926,
+        "stat_mp_oracle": 0.0007332667035947021,
+        "rel_deviation": 1.493377769428383e-13
+      },
+      "torch.sum": {
+        "stat_f64_oracle": 0.00038186573684886784,
+        "stat_mp_oracle": 0.00038186573684888893,
+        "rel_deviation": 5.522289700263905e-14
+      },
+      "seq": {
+        "stat_f64_oracle": 0.009450875697151705,
+        "stat_mp_oracle": 0.009450875697151835,
+        "rel_deviation": 1.376637095517714e-14
+      },
+      "worst_rel_deviation": 1.493377769428383e-13
+    }
+  ]
+}
