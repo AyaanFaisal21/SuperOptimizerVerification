@@ -104,9 +104,10 @@ Contributions:
 Mirage restricts search to its Lax fragment and probabilistically verifies
 candidate equivalence by evaluation over random finite-field values; the
 theorem bounds the probability of accepting a non-equivalent program, and
-the implementation runs a single random test with primes p=227 and q=113,
-chosen so their product fits in 16-bit integers, which the authors
-acknowledge. Separately, Mirage v3 (section 5.2) states that floating-point
+the implementation runs a single random test with primes stated in the
+paper as p=227 and q=113, chosen so their product fits in 16-bit integers,
+which the authors acknowledge; the released artifact's constants are 167
+and 83 (Appendix A). Separately, Mirage v3 (section 5.2) states that floating-point
 tests filter muGraphs with "significant numerical errors"; threshold,
 reference, and draw protocol are unstated. Prism reasons over roughly 70
 hand-written axioms in an e-graph; the axioms are intended to be sound, a
@@ -483,6 +484,28 @@ arXiv:2606.20128.
 Tensor Kernels. arXiv:2607.16228.
 [25] Test-Input Generation for Tensor Programs: What Actually Finds Kernel
 Bugs. arXiv:2606.27396.
+
+## Appendix A: implementation observations on the Mirage artifact
+
+Exploratory; the checklist of Section 8 applied to a released artifact.
+Audited: mirage-project/mirage at commit 5c28cc6 (2026-07-28) with the
+evaluation branch cross-checked; method and positive controls in the
+repository audit notes. The released superoptimize path is search, exact
+finite-field fingerprint verification, transpilation, then
+performance-only selection over random inputs; no floating-point
+comparison exists at the acceptance stage, so the tolerance, precision,
+and input-distribution coordinates are moot there, while the per-element
+rule (exact field equality), reference (input-graph fingerprints), draw
+count (a single fingerprint evaluation per candidate, consistent with the
+paper's acknowledged single test), and aggregation (all outputs must
+match) are determined by code. The numerical-stability filter described in
+the paper's v3 (section 5.2) is not locatable in the released search path
+at these commits; float tolerances appear only in demos and runtime-kernel
+tests. The finite-field constants are FP_P=167, FP_Q=83 on both audited
+branches, while the paper states p=227, q=113; under the paper's per-test
+acceptance bound, which scales as 1/q, the released configuration is
+weaker than the stated one by roughly 1.4x. These are observations about
+the released repository at pinned commits, not about any deployed system.
 
 ## Artifact
 

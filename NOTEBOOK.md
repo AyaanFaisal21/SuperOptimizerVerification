@@ -255,3 +255,21 @@ Entries are chronological. Full prose versions of all entries are preserved in g
   as the 8-item protocol reporting standard. paper.tex mirrors, two
   figures. Next per the review's sequencing: outside expert review, then
   rev 5b only if justified.
+
+## 2026-08-14: Mirage implementation audit (review #5 item 15)
+
+- Prediction (before the audit): no FP-tolerance filter in the released
+  search path. HELD, with positive control (the method finds the known
+  demo/test allclose sites).
+- The released superoptimize path is: search, exact finite-field fingerprint
+  verification (no float comparison anywhere), transpile, performance-only
+  selection over random inputs. The v3-stated numerical-stability filter is
+  not locatable in the released search path at commit 5c28cc6 or on the
+  evaluation branch.
+- Surprise: the finite-field constants in the released code are FP_P = 167,
+  FP_Q = 83 (product 13,861), on both HEAD and the evaluation branch, while
+  the paper states p = 227, q = 113. Under the paper's own 1/q bound, the
+  released single-test configuration is ~1.4x weaker than stated. The
+  paper's primes appear nowhere in the code.
+- Written up as Appendix A (artifact/appendix evidence per review #5);
+  full method in agent-notes/MIRAGE-AUDIT-2026-08-14.md.
