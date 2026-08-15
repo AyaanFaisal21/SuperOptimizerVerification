@@ -388,3 +388,27 @@ contains near-zero-|b| violations whose required atol exceeds every eps-mutant
 draw's entire envelope at every rtol before both fall below zero.
 
 No prior threshold moves. Scope: the recorded corpus, rtol <= 100.
+
+### 2026-08-14 (third amendment) — cross-draw quantifiers and grid completion
+
+**Trigger.** External review #5 (Rev. 5 direction): E5 tested one cross-draw
+semantics only. The cross-draw aggregation rule is itself an unspecified
+protocol coordinate, so both plausible quantifiers must be computed.
+
+**E6 — two-criterion envelope separability.** On the recorded corpus, with
+AV(r) the pooled valid envelope: criterion EVERY (each mutant draw rejected)
+uses AM_every(r) = min over mutant draws of the draw envelope; criterion SOME
+(each mutant caught on at least one draw) uses AM_some(r) = min over mutants
+of the max over that mutant's draw envelopes. A separator exists under a
+criterion iff some rtol in [0, 100] has max(AV(r), 0) < AM(r). Interval
+certificates as in E5 (chord bounds; AV non-increasing).
+**Prediction:** no separator under either criterion; sup gaps negative under
+both, with the SOME gap less negative than the EVERY gap (AM_some >= AM_every
+by construction). Either outcome is reportable; if SOME separates, the
+finding becomes: the unspecified cross-draw quantifier changes separability.
+
+**E7 — grid completion.** Two cells to complete Table 1's rectangle, 100
+draws each, literal rule, M=N=64, fp32. **Predictions:** unit scale K=1024:
+0/100 [0-4%]. Scale-matched gaussian (sigma 2.67) K=11008: 100/100 [96-100%].
+
+No prior threshold moves.
