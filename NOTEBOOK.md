@@ -182,3 +182,32 @@ Entries are chronological. Full prose versions of all entries are preserved in g
   or narrowing. Still open from review #3: README/CLAIM/PROGRESS carry the
   retracted K=2048 verdict pending the consistency pass; E2-E4 and the
   tree-baseline runs dump no JSON; committed sweeps predate acc_ratio.
+
+## 2026-08-14: measurement pass (measure.md queue)
+
+- Environment: torch 2.8.0, 6 threads, M3 Pro CPU. Matches the committed-record
+  conditions; nothing to disclose under ground rule 3. probe_hardware: storage
+  rounding in-type, as before.
+- P0.1 (110bff7): both sweeps regenerated. Field-aware diff vs the committed
+  records: 0 drift across 94 cells; acc_ratio now first-class in all records.
+- P0.2 (bd07e26): k_extension.json committed. E2 reproduces 0/100, 48/100,
+  100/100. E3 reproduces p_elem 3.42e-05, iid 13.1%, inside CI.
+- P0.3 (c6f497f): tree_baseline.json committed. Same numbers as 2026-08-08.
+- C1-C3 registered before running (60b68c4).
+- P1.1 / C1 (3c29480): fp16 seq FAIL 100%, tree pass 98%, torch.sum pass 99%;
+  bf16 all three FAIL 100%. Three clauses held. One clause FALSIFIED: the
+  per-draw floor ordering seq > tree > torch.sum holds on 80/100 (fp16) and
+  85/100 (bf16), not >=95%. The tree and torch.sum floor distributions overlap;
+  the mean ordering holds, the per-draw ranking does not. Falsified prediction
+  #10, and a sharpening of F3: even the ranking of references is draw-dependent.
+- P1.2 / C2 (8768fda): held in full. Five gross mutants 100% detection;
+  ln_eps_to_std evades 100/100 at sigma 2.67, f64 divergence 2.46e-06, smaller
+  than unit scale (4.08e-06), matching the registered mechanism.
+- P1.3 / C3 (5542ef2): held in full. K axis at sigma 2.67: 11, 69, 100, 100
+  per 100 at K = 512, 1024, 2048, 4096. Sigma axis at K=512: 0, 0, 1, 16, 74
+  per 100 at sigma 0.5, 1.0, 2.0, 2.67, 4.0. Monotone on both axes; the
+  committed 14% sits inside the new 16/100 CI [10, 24]. The rejection onset at
+  activation scale is K near 1024, four times below the unit-scale onset.
+- P2 not attempted this pass (optional per the queue): the d/floor anomaly
+  sweep (AUDIT step 6) and pretrained activations remain open.
+- measure.md retired in this commit per its own rule.
