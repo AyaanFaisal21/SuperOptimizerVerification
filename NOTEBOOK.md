@@ -211,3 +211,24 @@ Entries are chronological. Full prose versions of all entries are preserved in g
 - P2 not attempted this pass (optional per the queue): the d/floor anomaly
   sweep (AUDIT step 6) and pretrained activations remain open.
 - measure.md retired in this commit per its own rule.
+
+## 2026-08-14: review #4; exact separability (E5)
+
+- External review #4 archived in agent-notes. Eight fixes; two important: the
+  frontier's grid result did not license a family-level claim, and the 6.25%
+  selection-amplification extrapolation was statistically meaningless.
+- E5 registered in CLAIM before running; prediction held exactly. Separators
+  at sampled rtols: 0/401. All 400 inter-sample intervals certified
+  separator-free by convexity. sup(G - max(F,0)) = -3.487e-05. F(0) =
+  5.035e-04 (the valid corpus's flattest atol requirement) against G(0) =
+  4.101e-05 (the eps mutant's envelope ceiling): a 12x structural gap that
+  never closes. The family-level claim is now exact on the recorded corpus
+  for rtol <= 100.
+- Citations: three of review #4's five 2026 works verified and added
+  (2606.20128, 2607.16228, 2606.27396); Propilot and Kernel Contracts remain
+  unverified and uncited.
+- All eight review-4 items applied to PAPER.md and paper.tex: scale-matched
+  gaussian phrasing, 6.25% defined as a corpus miss fraction, the torch.sum
+  tensor-core explanation replaced, the selection-amplification extrapolation
+  deleted, TensorRight split out, justified-budget wording, frontier heatmap
+  added to the tex.
