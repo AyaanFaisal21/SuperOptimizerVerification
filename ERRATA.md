@@ -51,6 +51,20 @@ The largest corrections came only after an external prompt to verify.
 The first two were predicted against myself in the notebook before the falsifying run.
 The 2026-08-14 rows come from review #3: a full-text re-verification of every reference.
 
+### 2.8 Abstract corpus count (Rev. 5a, corrected same day)
+
+Rev. 5a said the exact analysis separates six rewrites from eighteen
+injected bugs. The recorded envelopes cover the sixteen frontier
+instances; the two gross detection-arm instances are excluded. Their
+inclusion could only strengthen non-separation, but the published count
+was wrong. Corrected in Rev. 5a.1.
+
+### 2.9 Backend attribution (Rev. 5a, corrected same day)
+
+Rev. 5a attributed the K rejection rates to "our PyTorch/Ampere
+backend." The K extension and scale grids ran in float32 PyTorch on the
+Apple M3 CPU. The Ampere A10 verified corpus equivalence and hardware
+characterization only. Corrected in Rev. 5a.1.
 ## 3. Tooling
 
 | Issue | Fix |

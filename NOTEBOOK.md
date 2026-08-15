@@ -273,3 +273,28 @@ Entries are chronological. Full prose versions of all entries are preserved in g
   paper's primes appear nowhere in the code.
 - Written up as Appendix A (artifact/appendix evidence per review #5);
   full method in agent-notes/MIRAGE-AUDIT-2026-08-14.md.
+
+## 2026-08-14 - E8: the semantics box, run and partially falsified
+
+Prediction, registered before the run: no separator at all four corners;
+tail closes. Outcome: the three corners that include a coherent Boolean
+validator semantics hold (all-draws-must-pass -4.0e-06, any-draw-may-pass
+-4.2e-06, pessimal pairing -3.5e-05; 400/400 intervals certified each;
+both bug envelopes nonpositive at rtol=100, so all three claims close
+over rtol >= 0). The fourth corner is FALSIFIED: best-draw-per-valid
+against worst-draw-per-bug admits separators at 110/401 samples, a
+contiguous band rtol in [7.8e-03, 7.9], maximum margin +9.5e-06 at
+rtol=0.056. The certificate correctly declines the 112 intervals that
+touch the band. Reading: the recorded errors permit separation under
+per-program draw selection; both coherent uniform semantics forbid it.
+The impossibility is a property of the cross-draw rule, not of the data.
+Paper F2 is rewritten around this. Two same-day corrections enter the
+errata: the Rev. 5a abstract said eighteen bugs where the recorded
+envelopes cover the sixteen frontier instances, and it attributed the K
+rejection rates to an Ampere backend where they ran on the Apple M3 CPU.
+
+Same day: Mirage recency check. The repository default branch is mpk and
+its tip is the audited 5c28cc6, so the audit covered the newest
+default-branch code. The main branch is older (ffe38df, 2026-04-17) and
+shows the same constants (167/83) and the same performance-only
+selection. Three branches now confirm. Appendix A updated.

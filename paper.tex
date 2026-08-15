@@ -1,5 +1,5 @@
 % Characterizing Floating-Point Validation Rules for Tensor Superoptimization
-% Rev. 5a: consolidation per review 5; two-criterion envelopes (E6); protocol taxonomy.
+% Rev. 5a.1: exactness pass per review 6; full semantics box (E8); tail closure.
 % Single file; pdflatex on Overleaf.
 \documentclass[twocolumn,10pt]{article}
 \usepackage[margin=0.9in,columnsep=0.28in]{geometry}
@@ -15,7 +15,7 @@
 
 \title{Characterizing Floating-Point Validation Rules\\for Tensor Superoptimization}
 \author{Ayaan Faisal\\Rutgers University}
-\date{Rev.\ 5a, August 14, 2026}
+\date{Rev.\ 5a.1, August 14, 2026}
 
 \begin{document}
 \maketitle
@@ -31,16 +31,22 @@ criterion. We characterize a fully specified representative rule and show
 that its verdict depends materially on contraction length and output
 multiplicity, input scale and distribution, reference implementation,
 precision, tolerance constants, and sampling protocol, including the
-cross-draw aggregation rule. On our PyTorch/Ampere backend, a
+cross-draw aggregation rule. In float32 PyTorch on an Apple M3 (CPU), a
 real-equivalent tiled matmul reaches substantial rejection rates at
 contraction widths used by deployed 7B-class models ($0/100$ draws at
 $K{=}2048$, $48/100$ [38--58\%] at $K{=}4096$, $100/100$ [96--100\%] at
 $K{=}11008$ at unit scale; onset near $K{=}1024$ under scale-matched
-gaussian inputs at $\sigma$ 2.67). An exact analysis of the measured corpus
-shows no nonnegative mixed absolute-relative tolerance with $\rtol\le100$
-separates the six real-equivalent rewrites from eighteen injected bugs
-under either cross-draw quantifier, while a real eps-placement bug evades
-every recorded draw at the published constant. Two plausible references
+gaussian inputs at $\sigma$ 2.67). An exact envelope analysis of the
+recorded separability corpus (six real-equivalent rewrites, one at two
+contraction widths, against sixteen frontier bug instances, fifty draws
+each) shows that no nonnegative mixed absolute-relative tolerance
+separates rewrites from bugs under either coherent Boolean cross-draw
+semantics, all-draws-must-pass or any-draw-may-pass, over the entire
+domain $\rtol\ge0$; yet judging each program on its single most favorable
+recorded draw admits a separator with margin \e{9.5}{-6}, so the
+impossibility belongs to the uniform cross-draw rule, not to the recorded
+errors. A real eps-placement bug evades every recorded draw at the
+published constant. Two plausible references
 reverse the direction of oracle-relative accuracy for the same candidate,
 and a sequential reference magnifies the difference to $15\times$. Repeated
 draws expose per-draw rejection rates ($14/100$ [9--22\%]) that
@@ -75,7 +81,7 @@ cross-draw aggregation rule. Our measurements show each coordinate is
 load-bearing: changing one, holding the others fixed, changes the verdict.
 The findings map onto the coordinates directly: F1 (contraction length,
 output multiplicity, input scale, within-tensor aggregation), F2 (tolerance
-constants and cross-draw quantifier), F3 (reference implementation), F4
+constants and cross-draw semantics), F3 (reference implementation), F4
 (draw count and cross-draw aggregation), F5 (precision), F6--F7 (input
 distribution beyond scale).
 
@@ -118,8 +124,9 @@ absolute errors alongside, and the rule's verdict under three reference
 implementations.
 \item A tolerance-frontier measurement over the full $(\atol,\rtol)$
 grid, plus an exact continuum feasibility computation on the recorded
-corpus, answering whether observed failures are a calibration problem or
-a rule-family problem.
+corpus under all four pairings of the extreme Boolean per-class draw
+semantics, closed over $\rtol\ge0$, answering whether observed failures
+are a calibration problem or a rule-family problem.
 \item An audit trail: pre-registration with dated amendments, predictions
 committed before every run (the log records ten falsified by their own
 runs), and an errata with four retracted or corrected results of our own.
@@ -195,6 +202,40 @@ approaches zero), element exceedance fractions, and the rule verdict. An
 earlier ratio (differential/floor) was direction-blind and is retired; the
 errata records the misreading it caused.
 
+\paragraph{Separability corpus and envelopes (E5, E8).} The exact analyses
+in F2 run on one fixed recorded dataset, the \emph{separability corpus}:
+the six valid pairs at their mlp shapes plus the $K{=}2048$ tiling cell
+(seven program cells) and the sixteen parameterized frontier instances,
+fifty unit-scale draws per program on shared seeds. The two gross
+detection-arm instances are excluded; adding bug instances can only lower
+the bug-side envelope, so non-separation extends a fortiori to supersets.
+For a recorded draw with per-element differences $d_i = |g_i - b_i|$ and
+reference magnitudes $x_i = |b_i|$, $T(r) = \max_i\,(d_i - r\,x_i)$ is
+the smallest \atol\ accepting the draw at relative tolerance $r$. Each
+$T$ is a finite maximum of lines through recorded points, evaluated
+exactly on the Pareto set of the $(x_i, d_i)$; it is convex, piecewise
+linear, and non-increasing. Four class-level envelopes cover the extreme
+Boolean per-class semantics: $F_{\mathrm{all}}(r)$, the maximum over all
+valid draws (a valid program is accepted only if every draw passes);
+$F_{\mathrm{any}}(r)$, the maximum over valid programs of the minimum
+over each program's draws (accepted if some draw passes);
+$G_{\mathrm{every}}(r)$, the minimum over all bug draws (a bug is caught
+only if every draw fails); and $G_{\mathrm{some}}(r)$, the minimum over
+bug instances of the maximum over each instance's draws (caught if some
+draw fails). A separator exists at $r$ for a pairing $(F, G)$ iff
+$\max(F(r), 0) < G(r)$. The computation samples 401 \rtol\ values (zero
+and 400 log-spaced in $[10^{-9}, 100]$) and certifies each inter-sample
+interval with a single-witness bound: a witness draw envelope, or for
+$G_{\mathrm{some}}$ a witness instance's max-envelope (itself a maximum
+of convex functions), is convex and so lies below the larger of its
+endpoint values on the interval, while every $F$ is non-increasing and
+so lies above its right-endpoint value; when the witness bound does not
+exceed $\max(F, 0)$ at the right endpoint, no $r$ in the interval
+separates. Convexity is used only for single witness envelopes, never
+for the min-envelopes $G$, which need not be convex. Every envelope is
+non-increasing, so a nonpositive bug-side envelope at $r = 100$ extends
+no-separation to all $r > 100$, closing the domain $\rtol \ge 0$.
+
 \paragraph{Evidence classes.} Claims below signal their evidence type by
 verb. Recorded facts about the measured corpus use ``observed,'' ``on all
 recorded draws,'' ``on the measured corpus,'' and may be stated exactly.
@@ -215,13 +256,13 @@ precede every run in the committed log.
 
 \paragraph{F1. Rejection of the valid tiled matmul reaches contraction
 widths used by deployed models under our pinned test geometry.} The
-mechanism, backend-independent in kind: near-zero output elements lose the
+mechanism is backend-agnostic in formulation: near-zero output elements lose the
 relative allowance, accumulated rounding disagreement grows with reduction
 length, and the any-element aggregation turns rare element violations into
 tensor rejection (in diagnosed failing draws, one element in 4096, its
-magnitude $750\times$ below the tensor median). The measured onset,
-backend-specific: on our PyTorch/Ampere--M3 backend under the literal
-elementwise rule at $M{=}N{=}64$, 100 draws per cell
+magnitude $750\times$ below the tensor median). The measured onset is
+backend-specific: in float32 PyTorch on the Apple M3 (CPU) under the
+literal elementwise rule at $M{=}N{=}64$, 100 draws per cell
 (Table~\ref{tab:ksweep}, Figure~\ref{fig:kscale}), $K{=}4096$ and 11008 are
 the projection and MLP contraction widths of Llama-2-7B~\cite{llama2}; the
 $\sigma$ column uses scale-matched gaussian inputs ($\sigma=2.67$, matching
@@ -282,25 +323,42 @@ inputs. The onset shifts roughly fourfold with input scale.}
 \end{figure}
 
 \paragraph{F2. No mixed absolute-relative tolerance separates the measured
-corpus, under either cross-draw quantifier.} On the recorded per-element
-errors, with $A_V(r)$ the smallest \atol\ accepting every valid draw at
-relative tolerance $r$: under criterion \textsc{every} (each mutant draw
-rejected), no $(\atol \ge 0, \rtol \le 100)$ separates; all 400
-inter-sample intervals carry a convexity certificate and the supremum of
-the separation gap is $-3.5\times10^{-5}$. Under criterion \textsc{some}
-(each mutant caught on at least one recorded draw), the result is the
-same, with the gap narrowing to $-4.0\times10^{-6}$: the weaker quantifier
-comes within 4 millionths of admitting a separator but never does. The
-cross-draw aggregation rule, which no source paper states, moves the
-separation margin ninefold. On the 64-point grid
-(Figure~\ref{fig:frontier}), the minimum total error is a three-point
-plateau, $(10^{-4},10^{-4})$, $(10^{-4},10^{-3})$, $(10^{-4},10^{-2})$, at
+corpus under either coherent Boolean cross-draw semantics; per-draw
+selection would.} On the separability corpus, with the envelopes of the
+Method section: under \emph{all-draws-must-pass} (a candidate is accepted
+iff every draw passes, so a bug is caught if at least one draw fails), no
+$(\atol \ge 0, \rtol \ge 0)$ separates, with supremum separation gap
+$-4.0\times10^{-6}$. Under \emph{any-draw-may-pass} (accepted if any draw
+passes, so a bug is caught only if every draw fails), the same, at
+$-4.2\times10^{-6}$. The pessimal pairing, valid programs held to every
+draw while bugs must fail every draw, reads $-3.5\times10^{-5}$. All 400
+inter-sample intervals in each of these three analyses carry the
+single-witness certificate, and the bug-side envelopes are nonpositive at
+$\rtol = 100$ ($-5.5\times10^{-5}$ and $-2.4\times10^{2}$), which extends
+all three results to the whole domain $\rtol \ge 0$. The fourth pairing
+is the information bound of the recorded data: judging each valid program
+on its most favorable recorded draw and each bug on its least favorable
+one, separators exist on a contiguous band
+$\rtol \in [7.8\times10^{-3},\,7.9]$ with maximum margin
+$+9.5\times10^{-6}$ (for example, $\atol = 10^{-6}$ at $\rtol = 0.056$).
+No uniform Boolean cross-draw rule realizes that pairing, so the recorded
+errors permit separation while both coherent semantics forbid it; this
+falsified our registered prediction that all four pairings would fail to
+separate, and it makes F4 concrete: which draws a program is judged on
+can decide separability outright. The pairing of per-class semantics,
+which no source paper states, swings the margin from $-3.5\times10^{-5}$
+across zero to $+9.5\times10^{-6}$. On the 64-point grid
+(Figure~\ref{fig:frontier}), the minimum observed total error (an
+equal-weight sum of the valid-rejection and bug-miss fractions; the
+weighting is an analytical choice, and Figure~\ref{fig:frontier} shows
+the two components separately) is a three-point plateau on the tested
+grid, $(10^{-4},10^{-4})$, $(10^{-4},10^{-3})$, $(10^{-4},10^{-2})$, at
 0\% valid rejection (unit scale) plus a 6.25\% mutant-instance miss
 fraction, meaning 1 of the 16 frontier instances, equivalently 50 of 800
 mutant draws, all from the eps-$10^{-5}$ bug; this fraction describes the
 constructed corpus, not any candidate population. Axon's published
-constant lies on the plateau and \atol\ is the binding coordinate, the
-near-zero-element mechanism restated. The evading bug's severity is
+constant lies on that tested-grid plateau and \atol\ is the binding
+coordinate, the near-zero-element mechanism restated. The evading bug's severity is
 input-dependent (it grows as row variance approaches eps), so detection
 statements hold at the measured input statistics; an oracle-referenced
 check with a condition-aware budget \emph{could} see it where the sampled
@@ -312,23 +370,23 @@ detection, the eps bug evading all 100 draws, its divergence shrinking to
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[x=0.42cm,y=0.42cm]
+\begin{tikzpicture}[x=0.30cm,y=0.30cm]
 \fill[black!80] (0,0) rectangle (1,1);
 \fill[black!80] (1,0) rectangle (2,1);
-\fill[black!73] (2,0) rectangle (3,1);
+\fill[black!74] (2,0) rectangle (3,1);
 \fill[black!69] (3,0) rectangle (4,1);
 \fill[black!65] (4,0) rectangle (5,1);
 \fill[black!47] (5,0) rectangle (6,1);
-\fill[black!37] (6,0) rectangle (7,1);
-\fill[black!34] (7,0) rectangle (8,1);
+\fill[black!38] (6,0) rectangle (7,1);
+\fill[black!32] (7,0) rectangle (8,1);
 \fill[black!69] (0,1) rectangle (1,2);
 \fill[black!69] (1,1) rectangle (2,2);
 \fill[black!69] (2,1) rectangle (3,2);
 \fill[black!69] (3,1) rectangle (4,2);
 \fill[black!65] (4,1) rectangle (5,2);
 \fill[black!47] (5,1) rectangle (6,2);
-\fill[black!37] (6,1) rectangle (7,2);
-\fill[black!31] (7,1) rectangle (8,2);
+\fill[black!38] (6,1) rectangle (7,2);
+\fill[black!29] (7,1) rectangle (8,2);
 \fill[black!69] (0,2) rectangle (1,3);
 \fill[black!69] (1,2) rectangle (2,3);
 \fill[black!69] (2,2) rectangle (3,3);
@@ -336,38 +394,66 @@ detection, the eps bug evading all 100 draws, its divergence shrinking to
 \fill[black!65] (4,2) rectangle (5,3);
 \fill[black!46] (5,2) rectangle (6,3);
 \fill[black!26] (6,2) rectangle (7,3);
-\fill[black!15] (7,2) rectangle (8,3);
-\fill[black!58] (0,3) rectangle (1,4);
-\fill[black!58] (1,3) rectangle (2,4);
+\fill[black!13] (7,2) rectangle (8,3);
+\fill[black!59] (0,3) rectangle (1,4);
+\fill[black!59] (1,3) rectangle (2,4);
 \fill[black!48] (2,3) rectangle (3,4);
-\fill[black!47] (3,3) rectangle (4,4);
+\fill[black!48] (3,3) rectangle (4,4);
 \fill[black!42] (4,3) rectangle (5,4);
-\fill[black!26] (5,3) rectangle (6,4);
-\fill[black!19] (6,3) rectangle (7,4);
-\fill[black!12] (7,3) rectangle (8,4);
-\fill[black!52] (0,4) rectangle (1,5);
-\fill[black!52] (1,4) rectangle (2,5);
-\fill[black!43] (2,4) rectangle (3,5);
-\fill[black!15] (3,4) rectangle (4,5);
-\fill[black!9] (4,4) rectangle (5,5);
-\fill[black!9] (5,4) rectangle (6,5);
-\fill[black!9] (6,4) rectangle (7,5);
-\fill[black!11] (7,4) rectangle (8,5);
+\fill[black!22] (5,3) rectangle (6,4);
+\fill[black!15] (6,3) rectangle (7,4);
+\fill[black!8] (7,3) rectangle (8,4);
+\fill[black!48] (0,4) rectangle (1,5);
+\fill[black!48] (1,4) rectangle (2,5);
+\fill[black!39] (2,4) rectangle (3,5);
+\fill[black!11] (3,4) rectangle (4,5);
+\draw[black!25,very thin] (0,0) grid (8,8);
+\draw[very thick] (4,4) rectangle (7,5);
+\node at (4.5,4.5) {$\ast$};
+\node[below,font=\tiny] at (0.5,0) {-8};
+\node[left,font=\tiny] at (0,0.5) {-8};
+\node[below,font=\tiny] at (2.5,0) {-6};
+\node[left,font=\tiny] at (0,2.5) {-6};
+\node[below,font=\tiny] at (4.5,0) {-4};
+\node[left,font=\tiny] at (0,4.5) {-4};
+\node[below,font=\tiny] at (6.5,0) {-2};
+\node[left,font=\tiny] at (0,6.5) {-2};
+\node[above,font=\tiny] at (4,8.1) {valid rejection};
+\node[below=7pt,font=\tiny] at (4,0) {$\log_{10}\rtol$};
+\node[rotate=90,font=\tiny] at (-1.6,4) {$\log_{10}\atol$};
+\end{tikzpicture}\hspace{0.45cm}
+\begin{tikzpicture}[x=0.30cm,y=0.30cm]
+\fill[black!7] (7,0) rectangle (8,1);
+\fill[black!7] (7,1) rectangle (8,2);
+\fill[black!5] (6,2) rectangle (7,3);
+\fill[black!8] (7,2) rectangle (8,3);
+\fill[black!6] (4,3) rectangle (5,4);
+\fill[black!9] (5,3) rectangle (6,4);
+\fill[black!10] (6,3) rectangle (7,4);
+\fill[black!10] (7,3) rectangle (8,4);
+\fill[black!10] (0,4) rectangle (1,5);
+\fill[black!10] (1,4) rectangle (2,5);
+\fill[black!10] (2,4) rectangle (3,5);
+\fill[black!10] (3,4) rectangle (4,5);
+\fill[black!10] (4,4) rectangle (5,5);
+\fill[black!10] (5,4) rectangle (6,5);
+\fill[black!10] (6,4) rectangle (7,5);
+\fill[black!12] (7,4) rectangle (8,5);
 \fill[black!13] (0,5) rectangle (1,6);
 \fill[black!13] (1,5) rectangle (2,6);
 \fill[black!13] (2,5) rectangle (3,6);
-\fill[black!13] (3,5) rectangle (4,6);
+\fill[black!14] (3,5) rectangle (4,6);
 \fill[black!14] (4,5) rectangle (5,6);
 \fill[black!14] (5,5) rectangle (6,6);
 \fill[black!15] (6,5) rectangle (7,6);
-\fill[black!18] (7,5) rectangle (8,6);
+\fill[black!19] (7,5) rectangle (8,6);
 \fill[black!24] (0,6) rectangle (1,7);
 \fill[black!24] (1,6) rectangle (2,7);
 \fill[black!24] (2,6) rectangle (3,7);
 \fill[black!24] (3,6) rectangle (4,7);
-\fill[black!26] (4,6) rectangle (5,7);
+\fill[black!27] (4,6) rectangle (5,7);
 \fill[black!28] (5,6) rectangle (6,7);
-\fill[black!29] (6,6) rectangle (7,7);
+\fill[black!30] (6,6) rectangle (7,7);
 \fill[black!32] (7,6) rectangle (8,7);
 \fill[black!33] (0,7) rectangle (1,8);
 \fill[black!33] (1,7) rectangle (2,8);
@@ -377,18 +463,25 @@ detection, the eps bug evading all 100 draws, its divergence shrinking to
 \fill[black!33] (5,7) rectangle (6,8);
 \fill[black!33] (6,7) rectangle (7,8);
 \fill[black!33] (7,7) rectangle (8,8);
-\draw[very thick] (4,4) rectangle (5,5);\draw[very thick] (5,4) rectangle (6,5);\draw[very thick] (6,4) rectangle (7,5);
-\node[white] at (4.5,4.5) {$\ast$};
-\node[below,font=\tiny] at (0.5,0) {-8};\node[below,font=\tiny] at (1.5,0) {-7};\node[below,font=\tiny] at (2.5,0) {-6};\node[below,font=\tiny] at (3.5,0) {-5};\node[below,font=\tiny] at (4.5,0) {-4};\node[below,font=\tiny] at (5.5,0) {-3};\node[below,font=\tiny] at (6.5,0) {-2};\node[below,font=\tiny] at (7.5,0) {-1};\node[left,font=\tiny] at (0,0.5) {-8};\node[left,font=\tiny] at (0,1.5) {-7};\node[left,font=\tiny] at (0,2.5) {-6};\node[left,font=\tiny] at (0,3.5) {-5};\node[left,font=\tiny] at (0,4.5) {-4};\node[left,font=\tiny] at (0,5.5) {-3};\node[left,font=\tiny] at (0,6.5) {-2};\node[left,font=\tiny] at (0,7.5) {-1};
-\node[below=8pt,font=\small] at (4,0) {$\log_{10}\rtol$};
-\node[rotate=90,font=\small] at (-1.7,4) {$\log_{10}\atol$};
+\draw[black!25,very thin] (0,0) grid (8,8);
+\draw[very thick] (4,4) rectangle (7,5);
+\node at (4.5,4.5) {$\ast$};
+\node[below,font=\tiny] at (0.5,0) {-8};
+\node[below,font=\tiny] at (2.5,0) {-6};
+\node[below,font=\tiny] at (4.5,0) {-4};
+\node[below,font=\tiny] at (6.5,0) {-2};
+\node[above,font=\tiny] at (4,8.1) {bug-instance miss};
+\node[below=7pt,font=\tiny] at (4,0) {$\log_{10}\rtol$};
+
 \end{tikzpicture}
-\caption{Total corpus error (valid-rewrite rejection fraction plus
-mutant corpus miss fraction) over the 64-point $(\atol,\rtol)$ grid,
-50 draws per program; darker is worse. Outlined cells: the optimum
-plateau (0\% valid rejection, 6.25\% corpus miss fraction). Star:
-Axon's published constant. The exact feasibility computation (E5)
-extends the no-separator result to the continuum for $\rtol\le100$.}
+\caption{Component error fractions over the 64-point $(\atol,\rtol)$
+grid, 50 draws per program: left, valid-rewrite rejection; right,
+bug-instance miss. Darker is worse on one absolute scale. Outlined: the
+minimum-error plateau of the equal-weight sum on the tested grid (0\%
+valid rejection, 6.25\% miss). Star: Axon's published constant. The
+exact envelope computation (E5, E8) extends the no-separator result to
+the continuum over $\rtol \ge 0$ under both coherent cross-draw
+semantics.}
 \label{fig:frontier}
 \end{figure}
 
@@ -410,12 +503,14 @@ draw-dependent. \texttt{torch.sum}'s smaller floor is consistent with a
 different internal accumulation strategy, which we do not characterize
 here; FPRev independently demonstrates that such accumulation orders are
 implementation properties that are often undocumented~\cite{fprev}.
-Reference-relative validation penalizes differing rather than being wrong:
-the cells where our two gate definitions disagree are exactly the cells
-where the candidate is closer to the oracle than its reference.
+Reference-relative validation observes disagreement but not its direction
+with respect to oracle accuracy: the cells where our two gate definitions
+disagree are exactly the cells where the candidate is closer to the
+oracle than its reference.
 
-\paragraph{F4. Detection is a rate, and neither the draw count nor the
-cross-draw rule is stated by any source paper.} Observed: the valid
+\paragraph{F4. Detection is a rate; the source papers do not fully
+specify the draw count and cross-draw aggregation used for numerical
+validation.} Observed: the valid
 $K{=}512$ tiling trips the rule on $14/100$ draws [9--22\%] under
 scale-matched gaussian inputs ($\sigma=2.67$) and $0/100$ at unit scale
 (upper bound 4\%); an independent registered replication reads $16/100$
@@ -457,7 +552,7 @@ the captured residual stream is empirically near zero-mean per row
 (cancellation statistic at most 0.016), an observation about this 6-layer
 pre-norm model, not an architectural guarantee. The evidence base is one
 small character-level model and one batch; broader pretrained-model
-coverage is the highest-value extension.
+coverage is the principal remaining external-validity limitation.
 
 \paragraph{F7. Inputs that force valid-corpus failures are far outside the
 observed activation distribution.} Constructed cancellation inputs trip
@@ -475,8 +570,10 @@ inputs and remain open.
 \section{Threats to validity}\label{sec:threats}
 
 \paragraph{Backend and reimplementation (F1--F5).} No emitted kernel from
-any system is executed; PyTorch reimplementations on Ampere/M3 stand in,
-while FPRev and FTTN document that real accumulation orders and
+any system is executed; PyTorch reimplementations stand in (headline $K$
+and scale grids in float32 on the Apple M3 CPU; corpus equivalence and
+hardware characterization verified on an Ampere A10), while FPRev and
+FTTN document that real accumulation orders and
 extra-precision behavior vary across libraries and accelerators. The
 frontier and $K$ results characterize the rule on our backend; magnitudes
 on Trainium or cuBLAS paths may differ.
@@ -487,7 +584,8 @@ variance approaches eps.
 
 \paragraph{Reference coverage (F3).} Three references (sequential,
 strided-tree, \texttt{torch.sum}) bound the effect on one backend;
-production references are undocumented multiway trees.
+production references may use blocked or multiway accumulation orders
+that differ from the three measured here and are often undocumented.
 
 \paragraph{One model, one batch (F6).} A pretrained-transformer activation
 corpus across layers and batches is the single most valuable missing
@@ -507,9 +605,9 @@ not an estimate of any candidate-population miss probability.
 
 \section{Implications}
 
-\paragraph{For Axon.} Its constant is, on our corpus, on the optimum plateau of its rule family
-(F2), and the family cannot separate the classes under either cross-draw
-quantifier;
+\paragraph{For Axon.} Its constant is, on our corpus, on the minimum-error
+plateau of the tested 64-point grid (F2), and no constant in the family
+separates the recorded corpus under either coherent cross-draw semantics;
 its rule's verdict becomes shape-dependent within deployed contraction
 widths on our backend, for a system whose proofs are shape-generic (F1). What the measurements support
 reporting: the draw count, the reference implementation and its accumulation order,
@@ -517,18 +615,20 @@ and a justified error budget appropriate to the operator, shape, and
 precision, with accumulation dependence where applicable, of the kind
 derived for mixed-precision GEMM by Blanchard et al.~\cite{blanchard} and
 Higham and Mary~\cite{highammary}. An oracle
-comparison could preserve accuracy-improving candidates (F3); a fixed
-reference-relative rule cannot.
+comparison could preserve accuracy-improving candidates (F3); a
+reference-relative rule cannot determine whether a disagreement improves
+or worsens oracle-relative accuracy.
 
 \paragraph{For Prism.} Half-precision evaluation with an unstated
 threshold sits exactly where F5 shows fixed FP32-class constants do not
 transfer; a stated and justified tolerance for its half-precision regime would make
 its random testing interpretable.
 
-\paragraph{For Mirage.} The v3 numerical-stability filter is the right
-mechanism; stating its threshold, reference, and draw count would make it
-the first fully specified floating-point acceptance rule in this
-literature.
+\paragraph{For Mirage.} Mirage v3 already places a numerical-stability
+filter after its algebraic verification; stating the filter's threshold,
+reference, and draw protocol would make it reproducible and interpretable
+from the paper specification. Appendix~A records that the filter is not
+locatable in the released artifact at the audited commits.
 
 \paragraph{Method integrity.} Four of our own results were retracted or
 corrected during this study: a mischaracterization of Mirage's testing
@@ -546,15 +646,15 @@ superoptimization, using random-tensor execution to identify
 candidate-equivalent graphs before formally verifying substitutions.
 TensorRight~\cite{tensorright} develops stronger idealized rewrite
 verification; Mirage, Prism, and Axon combine stronger semantic reasoning
-with residual empirical validation of generated implementations. TTrace~\cite{ttrace} is the closest adjacent study:
+with residual empirical validation of generated implementations. TTrace~\cite{ttrace} is one close adjacent study:
 in distributed-training validation it shows fixed \texttt{torch.allclose}
 tolerances produce false positives, false negatives, or both, and
 replaces them with perturbation-derived dynamic tolerances; our subject
 differs (superoptimizer acceptance rules, real-equivalent rewrites and
 injected bugs, reference and shape sensitivity), and our envelope analysis
 complements its diagnosis by showing no fixed pair separates our corpus
-at all. Concurrent 2026 measurements reach
-adjacent conclusions on neighboring workloads: fixed-shape small-sample
+at all. A concurrent line of 2026 measurements by one author (Sarkar)
+reaches adjacent conclusions on neighboring workloads: fixed-shape small-sample
 allclose oracles pass seeded-bug GPU kernels~\cite{illusion}, per-operator
 and per-dtype tolerance calibration trades detection against false
 positives~\cite{opaware}, and input-generation strategy materially changes
@@ -588,11 +688,12 @@ A numerical validation result is interpretable only relative to a
 specified validation protocol, and the measurements here show that
 individual protocol coordinates materially change the verdict: contraction
 length and output multiplicity (F1), tolerance constants and the
-cross-draw quantifier (F2), reference implementation (F3), draw count
+cross-draw semantics (F2), reference implementation (F3), draw count
 (F4), precision (F5), and input scale and distribution (F1, F6, F7). On
-the measured corpus, no nonnegative mixed absolute-relative tolerance with
-$\rtol \le 100$ separates real-equivalent rewrites from injected bugs
-under either cross-draw semantics. Real-activation FP32 cells passed
+the recorded corpus, no nonnegative mixed absolute-relative tolerance
+separates real-equivalent rewrites from injected bugs under either
+coherent Boolean cross-draw semantics, at any $\rtol \ge 0$; only
+per-draw selection, which no uniform rule realizes, would separate it. Real-activation FP32 cells passed
 everywhere measured, and no evidence indicates any system has shipped an
 incorrect kernel.
 
@@ -618,8 +719,10 @@ and no measured number comes from a model.
 \section*{Appendix A: implementation observations on the Mirage artifact}
 
 Exploratory; the checklist of Section~8 applied to a released artifact.
-Audited: \texttt{mirage-project/mirage} at commit \texttt{5c28cc6}
-(2026-07-28) with the \texttt{evaluation} branch cross-checked; method and
+Audited: \texttt{mirage-project/mirage} at commit \texttt{5c28cc6}, the
+tip of the default \texttt{mpk} branch (2026-07-28), with the
+\texttt{evaluation} branch and the older \texttt{main} branch
+(\texttt{ffe38df}, 2026-04-17) cross-checked; method and
 positive controls in the repository audit notes. The released
 \texttt{superoptimize} path is search, exact finite-field fingerprint
 verification, transpilation, then performance-only selection over random
@@ -632,7 +735,7 @@ aggregation (all outputs must match) are determined by code. The
 numerical-stability filter described in the paper's v3 (\S5.2) is not
 locatable in the released search path at these commits; float tolerances
 appear only in demos and runtime-kernel tests. The finite-field constants
-are \texttt{FP\_P}=167, \texttt{FP\_Q}=83 on both audited branches,
+are \texttt{FP\_P}=167, \texttt{FP\_Q}=83 on all three audited branches,
 while the paper states $p{=}227$, $q{=}113$; under the paper's per-test
 acceptance bound, which scales as $1/q$, the released configuration is
 weaker than the stated one by roughly $1.4\times$. These are observations
@@ -690,8 +793,8 @@ Producing Wrong Data Without Doing Anything Obviously Wrong! ASPLOS 2009.
 GPU Kernels. arXiv:2606.20128.
 \bibitem{opaware} D.~Sarkar. Operator-Aware Mixed-Precision Tolerance
 Calibration for Tensor Kernels. arXiv:2607.16228.
-\bibitem{testinput} Test-Input Generation for Tensor Programs: What
-Actually Finds Kernel Bugs. arXiv:2606.27396.
+\bibitem{testinput} D.~Sarkar. Test-Input Generation for Tensor Programs:
+What Actually Finds Kernel Bugs. arXiv:2606.27396.
 \bibitem{llama2} H.~Touvron et al. Llama 2: Open Foundation and Fine-Tuned
 Chat Models. 2023.
 \end{thebibliography}
