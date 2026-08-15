@@ -412,3 +412,39 @@ draws each, literal rule, M=N=64, fp32. **Predictions:** unit scale K=1024:
 0/100 [0-4%]. Scale-matched gaussian (sigma 2.67) K=11008: 100/100 [96-100%].
 
 No prior threshold moves.
+
+### 2026-08-14 (fourth amendment) — full cross-draw semantics box and tail closure
+
+**Trigger.** External review #6: (a) naming the cross-draw semantics
+operationally exposed that E6's EVERY criterion paired the strictest rule on
+both classes (valid must pass all draws AND each mutant must fail all draws),
+which is the separator-hardest corner, not a single coherent validator; the
+separator-easiest corner (valid accepted if any draw passes, mutant caught if
+any draw fails) was never computed. (b) The rtol <= 100 cutoff can be closed
+analytically if the mutant envelopes are nonpositive at r = 100.
+
+**E8 — the 2x2 semantics box.** With F_all(r) = max over valid draws of T_d(r)
+(all-draws-must-pass for valid), F_any(r) = max over valid programs of the min
+over that program's draws (any-draw-may-pass), G_every(r) = min over mutant
+draws (mutant caught only if every draw fails), G_some(r) = min over mutants of
+the max over that mutant's draws (mutant caught if at least one draw fails):
+compute the separation gap sup_r (G - max(F, 0)) and interval certificates for
+all four (F, G) corners on the recorded separability corpus. All envelopes are
+non-increasing, and each per-program/per-mutant envelope is convex
+piecewise-linear, so the single-witness endpoint bound plus F-monotonicity
+certificate applies at every corner.
+
+**Tail closure.** If G_every(100) <= 0 and G_some(100) <= 0, then by
+monotonicity G(r) <= 0 <= max(F(r), 0) for all r >= 100 under every corner,
+removing the rtol <= 100 cutoff.
+
+**Predictions.** All four corners: no separator; every interval certified. The
+separator-easiest corner (F_any, G_some) has the least negative sup gap, on
+the order of -1e-4 near r = 0. Both G values at r = 100 are nonpositive, so
+the headline claim holds for all rtol >= 0.
+
+No prior threshold moves. Corpus: the E5/E6 separability corpus (the six
+pairs at their mlp shapes plus the K=2048 tiling cell, 50 unit-scale draws
+each; the 16 parameterized frontier mutant instances, 50 draws each). Adding
+mutants can only lower G, so non-separability over the 16 extends a fortiori
+to supersets including the two gross detection-arm instances.
