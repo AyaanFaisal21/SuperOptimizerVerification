@@ -1,8 +1,8 @@
 # Characterizing Floating-Point Validation Rules for Tensor Superoptimization
 
-Ayaan Faisal. Rev. 5a.1 of 2026-08-14: exactness pass per external review
-6; full cross-draw semantics box (E8) with tail closure. Artifact: this
-repository.
+Ayaan Faisal. Rev. 5a.2 of 2026-08-15: correctness pass per external
+review 7; Mirage bound stated exactly; semantics scoped to the analyzed
+extremes. Artifact: this repository.
 
 ## Abstract
 
@@ -24,13 +24,10 @@ onset near K=1024 under scale-matched gaussian inputs at sigma 2.67). An
 exact envelope analysis of the recorded separability corpus (six
 real-equivalent rewrites, one at two contraction widths, against sixteen
 frontier bug instances, fifty draws each) shows that no nonnegative mixed
-absolute-relative tolerance separates rewrites from bugs under either
-coherent Boolean cross-draw semantics, all-draws-must-pass or
-any-draw-may-pass, over the entire domain rtol >= 0; yet judging each
-program on its single most favorable recorded draw admits a separator with
-margin 9.5e-06, so the impossibility belongs to the uniform cross-draw
-rule, not to the recorded errors. A real eps-placement bug evades every
-recorded draw at the published constant. Two plausible
+absolute-relative tolerance separates rewrites from bugs under the two
+extreme Boolean cross-draw semantics analyzed, all-draws-must-pass and
+any-draw-may-pass, over the entire domain rtol >= 0. A real eps-placement
+bug evades every recorded draw at the published constant. Two plausible
 references reverse the direction of oracle-relative accuracy for the same
 candidate, and a sequential reference magnifies the difference to 15x.
 Repeated draws expose per-draw rejection rates (14/100 [9-22%]) that
@@ -59,8 +56,11 @@ protocol with several independent coordinates: the reference implementation,
 the precision, the input distribution and scale, the per-element comparison
 rule, the within-tensor aggregation (one violating element rejects the
 tensor), the number of independent draws, and the cross-draw aggregation
-rule. Our measurements show that each of these coordinates is load-bearing:
-changing one, holding the others fixed, changes the verdict. The findings
+rule. These coordinates jointly define the protocol. We vary the
+reference, precision, input distribution, scale, tolerance constants,
+draw count, and cross-draw semantics, and the verdict moves with each;
+the per-element functional form and the within-tensor aggregation are
+held fixed, their roles isolated analytically (F1). The findings
 map onto the coordinates directly: F1 (contraction length, output
 multiplicity, input scale, within-tensor aggregation), F2 (tolerance
 constants and cross-draw semantics), F3 (reference implementation), F4
@@ -177,8 +177,11 @@ draws per program on shared seeds. The two gross detection-arm instances
 are excluded; adding bug instances can only lower the bug-side envelope,
 so non-separation extends a fortiori to supersets. For a recorded draw
 with per-element differences d_i = |g_i - b_i| and reference magnitudes
-x_i = |b_i|, T(r) = max_i (d_i - r * x_i) is the smallest atol accepting
-the draw at relative tolerance r. Each T is a finite maximum of lines
+x_i = |b_i|, T(r) = max_i (d_i - r * x_i) is the unclamped absolute
+slack the draw requires at relative tolerance r: any real atol >= T(r)
+accepts, and since the rule restricts atol >= 0 the smallest admissible
+accepting threshold is max(T(r), 0), the clamp the separator test
+applies. Each T is a finite maximum of lines
 through recorded points, evaluated exactly on the Pareto set of the
 (x_i, d_i); it is convex, piecewise linear, and non-increasing. Four
 class-level envelopes cover the extreme Boolean per-class semantics:
@@ -241,16 +244,17 @@ Llama-2-7B; the sigma column uses scale-matched gaussian inputs (sigma
 2.67, matching the measured activation scale), and the onset falls roughly
 fourfold from its unit-scale position. Rejection is non-decreasing along
 both axes (the sigma axis at K=512 reads 0, 0, 1, 16, 74 per 100 at sigma
-0.5 to 4.0). Tensor-scale relative disagreement stays near 1e-6 throughout,
-so no tensor-scale relative statistic predicts the verdict. A simple
+0.5 to 4.0). Tensor-scale relative disagreement (maximum absolute difference over
+maximum oracle magnitude) stays near 1e-6 throughout, so the tensor-scale
+statistic we report does not track the verdict. A simple
 independence approximation over the rule's any-element quantifier, from the
 measured per-element exceedance of 3.42e-05 at K=512, gives 13.1%,
 consistent with the observed [9-22%]; dependence among output elements is
 not established either way.
 
 **F2. No mixed absolute-relative tolerance separates the measured corpus
-under either coherent Boolean cross-draw semantics; per-draw selection
-would.** On the separability corpus, with the envelopes of Section 3:
+under the two extreme Boolean cross-draw semantics analyzed; a
+class-conditioned draw assignment would.** On the separability corpus, with the envelopes of Section 3:
 under all-draws-must-pass (a candidate is accepted iff every draw passes,
 so a bug is caught if at least one draw fails), no (atol >= 0, rtol >= 0)
 separates, with supremum separation gap -4.0e-06. Under any-draw-may-pass
@@ -260,18 +264,23 @@ to every draw while bugs must fail every draw, reads -3.5e-05. All 400
 inter-sample intervals in each of these three analyses carry the
 single-witness certificate of Section 3, and the bug-side envelopes are
 nonpositive at rtol = 100 (-5.5e-05 and -2.4e+02), which extends all
-three results to the whole domain rtol >= 0. The fourth pairing is the
-information bound of the recorded data: judging each valid program on its
-most favorable recorded draw and each bug on its least favorable one,
-separators exist on a contiguous band rtol in [7.8e-03, 7.9] with maximum
-margin +9.5e-06 (for example, atol = 1e-06 at rtol = 0.056). No uniform
-Boolean cross-draw rule realizes that pairing, so the recorded errors
-permit separation while both coherent semantics forbid it; this falsified
-our registered prediction that all four pairings would fail to separate,
-and it makes F4 concrete: which draws a program is judged on can decide
-separability outright. The pairing of per-class semantics, which no
+three results to the whole domain rtol >= 0. The fourth pairing is a
+class-conditioned information bound, not an operational validator: it
+judges each valid program on its most favorable recorded draw and each
+bug on its least favorable one, an assignment that requires knowing the
+class in advance. Under it, separators exist on a contiguous band rtol
+in [7.8e-03, 7.9] with maximum margin +9.5e-06 (for example,
+atol = 1e-06 at rtol = 0.056). So the pointwise recorded errors are not
+themselves inseparable; the nonseparability emerges under the two
+uniform extreme semantics analyzed. This falsified our registered
+prediction that all four pairings would fail to separate, and it makes
+F4 concrete: which draws a program is judged on can decide separability
+outright. The pairing of per-class semantics, which no
 source paper states, swings the margin from -3.5e-05 across zero to
-+9.5e-06. On the 64-point grid, the minimum observed total error (an
++9.5e-06. Intermediate Boolean rules (k-of-n acceptance) evaluate the
+k-th order statistic of the same per-draw envelopes on both classes;
+they are coherent, unanalyzed here, and remain part of the
+specification space. On the 64-point grid, the minimum observed total error (an
 equal-weight sum of the valid-rejection and bug-miss fractions; the
 weighting is an analytical choice, and the two components are reported
 separately in the artifact) is a three-point plateau on the tested grid,
@@ -381,8 +390,8 @@ across libraries and accelerators.
 **Mutant severity is input-dependent (F2).** Detection rates are statements
 at the stated input statistics.
 
-**Reference coverage (F3).** Three references bound the effect on one
-backend; production references may use blocked or multiway accumulation
+**Reference coverage (F3).** Three references demonstrate the effect on
+one backend; production references may use blocked or multiway accumulation
 orders that differ from the three measured here and are often
 undocumented.
 
@@ -405,7 +414,8 @@ above is not an estimate of any candidate-population miss probability.
 
 **For Axon.** Its constant is, on our corpus, on the minimum-error plateau
 of the tested 64-point grid (F2), and no constant in the family separates
-the recorded corpus under either coherent cross-draw semantics; its rule's
+the recorded corpus under the two extreme Boolean cross-draw semantics
+analyzed; its rule's
 verdict becomes shape-dependent within deployed contraction widths on our
 backend (F1). An oracle comparison could preserve accuracy-improving
 candidates (F3); a reference-relative rule cannot determine whether a
@@ -472,9 +482,9 @@ output multiplicity (F1), tolerance constants and the cross-draw semantics
 (F2), reference implementation (F3), draw count (F4), precision (F5), and
 input scale and distribution (F1, F6, F7). On the recorded corpus, no
 nonnegative mixed absolute-relative tolerance separates real-equivalent
-rewrites from injected bugs under either coherent Boolean cross-draw
-semantics, at any rtol >= 0; only per-draw selection, which no uniform
-rule realizes, would separate it. Real-activation FP32 cells passed everywhere measured, and no
+rewrites from injected bugs under the two extreme Boolean cross-draw
+semantics analyzed, at any rtol >= 0; only a class-conditioned draw
+assignment, which no uniform rule realizes, would separate it. Real-activation FP32 cells passed everywhere measured, and no
 evidence indicates any system has shipped an incorrect kernel.
 
 The constructive conclusion is a reporting standard, not a replacement
@@ -552,9 +562,10 @@ mpk branch (2026-07-28), with the evaluation branch and the older main
 branch (ffe38df, 2026-04-17) cross-checked; method and positive controls in the
 repository audit notes. The released superoptimize path is search, exact
 finite-field fingerprint verification, transpilation, then
-performance-only selection over random inputs; no floating-point
-comparison exists at the acceptance stage, so the tolerance, precision,
-and input-distribution coordinates are moot there, while the per-element
+performance-only selection over random inputs; we found no
+floating-point comparison in the audited acceptance path at these
+commits, which leaves the tolerance, precision, and input-distribution
+coordinates unexercised there, while the per-element
 rule (exact field equality), reference (input-graph fingerprints), draw
 count (a single fingerprint evaluation per candidate, consistent with the
 paper's acknowledged single test), and aggregation (all outputs must
@@ -562,9 +573,12 @@ match) are determined by code. The numerical-stability filter described in
 the paper's v3 (section 5.2) is not locatable in the released search path
 at these commits; float tolerances appear only in demos and runtime-kernel
 tests. The finite-field constants are FP_P=167, FP_Q=83 on all three audited
-branches, while the paper states p=227, q=113; under the paper's per-test
-acceptance bound, which scales as 1/q, the released configuration is
-weaker than the stated one by roughly 1.4x. These are observations about
+branches, while the paper states p=227, q=113. Theorem 2 of the paper
+bounds a single test's acceptance probability by 8dk^4/q + q^(-1/k^2);
+both terms grow as q falls, so the released q loosens the stated bound
+at every fixed (d, k) by a factor that depends on (d, k). An earlier
+1.4x reading treated the bound as proportional to 1/q and is retracted
+in the errata. These are observations about
 the released repository at pinned commits, not about any deployed system.
 
 ## Artifact
