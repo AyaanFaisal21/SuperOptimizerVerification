@@ -1,7 +1,8 @@
 # Characterizing Floating-Point Validation Rules for Tensor Superoptimization
 
-Ayaan Faisal. Rev. 5a.2 of 2026-08-15: correctness and clarity pass per
-external review 7. Artifact: this repository.
+Ayaan Faisal. Rev. 5a.3 of 2026-08-15: claim audit; every number
+asserted against the committed records; three corrections. Artifact:
+this repository.
 
 ## Abstract
 
@@ -55,7 +56,7 @@ protocol with several independent coordinates: the reference implementation,
 the precision, the input distribution and scale, the per-element comparison
 rule, the within-tensor aggregation (one violating element rejects the
 tensor), the number of independent draws, and the cross-draw aggregation
-rule. These coordinates jointly define the protocol. We vary the
+rule. We vary the
 reference, precision, input distribution, scale, tolerance constants,
 draw count, and cross-draw semantics, and the verdict moves with each;
 the per-element functional form and the within-tensor aggregation are
@@ -71,9 +72,12 @@ rejection of rewrites that are algebraic identities over the reals, and
 acceptance of injected bugs. The question is not whether any system has
 shipped a wrong kernel; we find no evidence of that.
 
-Scope, stated first: we characterize the rule, not the systems' outputs. The
-rewrites are PyTorch reimplementations of transformations these systems
-accept, run on an Ampere GPU and an Apple M3 with TF32 disabled. No kernel
+Scope, stated first: we characterize the rule, not the systems' outputs.
+The rewrites are PyTorch reimplementations of transformations these
+systems accept, with per-pair provenance recorded in the artifact (the
+online-softmax rescale form is unclassified by all three source papers
+and is in the corpus for that reason, F7), run on an Ampere GPU and an
+Apple M3 with TF32 disabled. No kernel
 emitted by Mirage, Prism, or Axon is executed; Axon's deployment target
 (Trainium/NKI) differs from our backend in accumulation and lowering, and
 FPRev and FTTN document that accumulation order and extra-precision behavior
@@ -89,8 +93,8 @@ contains both cases, and Section 4 keeps the two axes separate.
 
 Contributions:
 
-1. A two-class corpus: six real-equivalent rewrites with per-system
-   provenance (identities established symbolically; implementations
+1. A two-class corpus: six real-equivalent rewrites with recorded
+   per-pair provenance (identities established symbolically; implementations
    validated to 3.5e-15 against a 50-digit-validated float64 oracle), and
    eighteen injected bugs across six classes whose float64 divergences span
    4.1e-6 to 8.2e-1, sixteen forming the frontier's severity continuum.
@@ -121,8 +125,8 @@ formal proof is stated to be beyond scope, and every generated kernel is
 subjected to random equivalence testing with no stated tolerance, in an
 evaluation that is entirely half-precision; the paper does not otherwise
 discuss floating-point behavior. Axon proves equivalence over the reals with
-Z3 (1650x faster than Z3's floating-point theory on its own example:
-247.75 s versus 0.15 s) and validates compiled NKI kernels on Trainium
+Z3 (1650x faster than Z3's floating-point theory on its own example)
+and validates compiled NKI kernels on Trainium
 against a reference implementation on random FP32 inputs at
 `rtol = atol = 1e-4`. Axon does not state how many independent inputs the
 numerical gate uses; its evaluation separately reports 100 timing
@@ -215,7 +219,8 @@ qualifiers.
 claim), amended (registered by dated amendment before execution: the mutant
 arm, the tolerance frontier, the K extension, the decomposition, the
 library reference, the C1-C3 pass, the separability computations E5, E6,
-and E8, and the grid completion E7), or exploratory (single-draw sweeps that motivated
+and E8, the grid completion E7, and the verification and diagnostics V1,
+D1, and D2), or exploratory (single-draw sweeps that motivated
 later registered runs). Predictions precede every run in the committed log.
 
 ## 4. Findings
@@ -249,7 +254,14 @@ statistic we report does not track the verdict. A simple
 independence approximation over the rule's any-element quantifier, from the
 measured per-element exceedance of 3.42e-05 at K=512, gives 13.1%,
 consistent with the observed [9-22%]; dependence among output elements is
-not established either way.
+not established either way. Two same-kernel observations support the
+mechanism attribution: at fixed K=512 the sigma axis alone drives
+rejection from 0 to 74 per 100, where no K-correlated kernel change can
+act, and the recorded maximum absolute disagreement grows smoothly and
+roughly proportionally with K across all five widths (median 6.1e-05 at
+K=512 to 1.3e-03 at K=11008, no isolated jump), with its argmax at
+large, rtol-protected elements (D1): the binding violations are the
+near-zero elements.
 
 **F2. No mixed absolute-relative tolerance separates the recorded corpus
 under the two extreme Boolean cross-draw semantics analyzed; a
@@ -295,20 +307,25 @@ statements hold at the measured input statistics; an oracle-referenced
 check with a condition-aware budget could see it where the sampled rule
 cannot, though whether a principled budget resolves 4.1e-6 at these
 statistics is not demonstrated. Under scale-matched gaussian inputs at
-sigma 2.67 the picture is unchanged: five gross mutants at 100/100
-detection, the eps bug evading all 100 draws, its divergence shrinking to
+sigma 2.67 the picture is unchanged: the five other detection-arm
+mutants at 100/100 detection, the eps bug evading all 100 draws, its divergence shrinking to
 2.46e-6 as the registered mechanism predicts.
 
 **F3. Two plausible references reverse the direction of the accuracy
-comparison; a sequential reference magnifies it to 15x.** Observed on the
-measured corpus at fp16, for the same online-softmax candidate (absolute
-oracle errors in parentheses): against the strided-tree reference the
-candidate is 1.6x closer to the oracle than its reference (6.0e-4 vs
-9.7e-4) and the rule passes it on 98/100 draws [93-99%]; against
-`torch.sum` it is 1.6x farther (6.0e-4 vs 3.7e-4) and the rule passes it on
-99/100 [95-100%]; against sequential accumulation it is 15x closer (6.0e-4
-vs 8.9e-3) and the rule fails it on 100/100 [96-100%]. At bf16 the ratios
-are 1.92, 2.14, and 0.02, and the rule fails all three on 100/100. The mean
+comparison; a sequential reference magnifies it to 15x.** Observed at
+fp16 on the registered single-draw cell at (512, 1024), absolute oracle
+errors in parentheses, 100-draw rates alongside: against the strided-tree
+reference the candidate is 1.6x closer to the oracle than its reference
+on that draw (6.0e-4 vs 9.7e-4), while the 100-draw mean ratio runs the
+other way (1.7x farther), and the rule passes it on 98/100 draws
+[93-99%]; against `torch.sum` it is 1.6x farther (6.0e-4 vs 3.7e-4;
+100-draw mean 2.3x farther) and the rule passes it on 99/100 [95-100%];
+against sequential accumulation it is 15x closer (6.0e-4 vs 8.9e-3;
+100-draw mean 11x closer) and the rule fails it on 100/100 [96-100%].
+The direction against the tree reference is therefore itself
+draw-dependent; the sequential and `torch.sum` directions are stable in
+the mean. At bf16 the single-draw ratios are 1.92, 2.14, and 0.02, and
+the rule fails all three on 100/100. The mean
 floors order seq > tree > torch.sum, but the per-draw ordering holds on
 only 80/100 (fp16) and 85/100 (bf16) draws: the ranking of references is
 itself draw-dependent. `torch.sum`'s smaller floor is consistent with a
@@ -341,13 +358,14 @@ still not enough to reproduce a validator.
 
 **F5. An FP32-class fixed tolerance does not transfer to reduced
 precision.** An untransformed matmul deviates from exact arithmetic on its
-own inputs (scale-relative: maximum absolute difference over maximum oracle
-magnitude) by 3.95e-4 at fp16 and 3.10e-3 at bf16, and all 36
-reduced-precision cells fail a 1e-4-class rule. The direction ratio shows
+own inputs (scale-relative: maximum absolute difference over maximum
+oracle magnitude) by 3.91e-4 at fp16 and 3.45e-3 at bf16 at the mlp
+shape, and all 36 reduced-precision cells fail a 1e-4-class rule. The direction ratio shows
 these failures are dominated by reference and precision error rather than
-by the rewrites: against the sequential reference the reordering candidates
-are 3x to 73x closer to the oracle than the reference they fail against (8x
-to 62x at the mlp shapes). Axon scopes its constant to FP32 explicitly;
+by the rewrites: against their sequential references the three
+accumulation-reordering pairs (split reduction, reassociation, online
+softmax) are 3x to 73x closer to the oracle than the reference they fail
+against (8x to 62x at the mlp shapes). Axon scopes its constant to FP32 explicitly;
 Prism's benchmarks are half-precision with no stated threshold; so this
 characterizes what would happen if an FP32-class threshold were
 transferred, not what any system's actual criterion does.
@@ -357,9 +375,10 @@ real-activation FP32 cell passes with at least 10x headroom, including
 post-LayerNorm row sums at condition number 368,927, 400x beyond
 unit-gaussian reach (condition rose 400x, error rose 11x). The
 fused-variance hazard does not materialize because the captured residual
-stream is empirically near zero-mean per row (cancellation statistic at
-most 0.016), an observation about this 6-layer pre-norm model, not an
-architectural guarantee. Matching scale is not matching distribution: the
+stream is empirically near zero-mean in the bulk of its rows (per-row
+cancellation, |mean| over mean|x|: 99th percentile at most 0.012, worst
+row 0.16, across the two residual captures), an observation about this
+6-layer pre-norm model, not an architectural guarantee. Matching scale is not matching distribution: the
 scale-matched gaussian draws that reject in F1 share only variance with
 these activations, and the real tensors pass. The evidence base is one
 small character-level model and one batch; broader pretrained-model
@@ -398,8 +417,10 @@ undocumented.
 **One model, one batch (F6).** A pretrained-transformer activation corpus
 across layers and batches is the single most valuable missing dataset.
 
-**Oracle and ratios.** The float64 oracle is validated at small shapes;
-direction ratios are reported with absolute errors. Exploratory single-draw
+**Oracle and ratios.** The float64 oracle is validated at small shapes,
+and the F3 headline cell is spot-checked against a 50-digit oracle on
+three draws, worst relative deviation 1.7e-13 (D2); direction ratios are
+reported with absolute errors. Exploratory single-draw
 cells exist and are labeled; headline claims rest on registered
 repeated-draw runs.
 
@@ -436,14 +457,12 @@ reference, and draw protocol would make it reproducible and interpretable
 from the paper specification. Appendix A records that the filter is not
 locatable in the released artifact at the audited commits.
 
-**Method integrity.** Our own retracted or corrected results include a
-mischaracterization of Mirage's testing from a stale paper version, a
-direction-blind metric interpretation refuted by our own records, an
-unsupported single-draw attribution, a K=2048 rejection verdict produced
-by comparing a maximum absolute difference against `atol` alone (the
-same quantity confusion this paper studies), and a misread of Mirage's
-Theorem 2 bound. Every correction moved against our own claims. The
-errata and dated run log are part of the artifact.
+**Method integrity.** Our own results required correction repeatedly
+during this study, and every correction moved against our own claims;
+the errata records each with its cause. The most instructive: a K=2048
+rejection verdict produced by comparing a maximum absolute difference
+against `atol` alone, the same quantity confusion this paper studies.
+The errata and dated run log are part of the artifact.
 
 ## 7. Related work
 
@@ -590,8 +609,10 @@ the released repository at pinned commits, not about any deployed system.
 
 ## Artifact
 
-All measurements reproduce from this repository; each experiment runs from
-one script, raw per-cell records are committed, and the pre-registration,
-amendments, run log, and errata are public. AI tools (Claude) assisted with
+All measurements reproduce from this repository; each experiment runs
+from one script, raw per-cell records and the activation fixtures are
+committed, and the pre-registration, amendments, run log, and errata are
+public. One script, tools/check_paper_numbers.py, asserts every number
+in this paper against the committed records. AI tools (Claude) assisted with
 code, measurements, and documentation; the developer directed, reviewed,
 and verified all work, and no measured number comes from a model.

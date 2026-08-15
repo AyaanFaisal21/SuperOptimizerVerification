@@ -370,3 +370,31 @@ oracle for the tree, torch.sum, and sequential references. Prediction:
 the float64-oracle error statistics agree with the 50-digit ones to
 better than 1e-6 relative, and every F3 ratio is unchanged at the
 reported precision.
+
+## 2026-08-15 - V1, D1, D2 outcomes; full claim audit
+
+V1 outcome: prediction held exactly. The independent no-Pareto
+recomputation reproduces every envelope value with zero deviation and
+identical corner statistics; five synthetic known-answer tests pass,
+including the hidden-separator case landing uncertified. E5/E8 is
+independently verified. D1 outcome: prediction held. Median max
+disagreement grows smoothly and roughly proportionally with K, 6.1e-05
+at 512 to 1.3e-03 at 11008, no isolated jump, argmax at large
+rtol-protected elements; with the fixed-K sigma progression this makes
+the F1 mechanism data-backed. D2 outcome: prediction held. Worst
+relative deviation of the float64-oracle statistics from the 50-digit
+oracle is 1.7e-13 across three draws and four computations; the seq
+floor 8.938e-03 reproduces the sweep cell exactly, pinning F3's source.
+
+Claim audit: tools/check_paper_numbers.py asserts 71 paper numbers
+against the committed records; 65 recompute, 6 resolve to quoted lines
+of this log, and three failures were real paper errors, now errata 2.11
+to 2.13: the F3 tree direction is draw-dependent and was presented as
+characteristic; the F5 control floors were stale values matching no
+committed cell; the F6 cancellation statistic 0.016 matched no recorded
+quantity. Also caught and fixed: F2 called five detection-arm mutants
+gross where the Method defines two gross classes, and F5's reordering
+set is now named (split reduction, reassociation, online softmax).
+Provenance table published in BACKGROUND.md from the corpus records; the
+intro now marks the online-softmax pair's unclassified status instead of
+claiming blanket acceptance.

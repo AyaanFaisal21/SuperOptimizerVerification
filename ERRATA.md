@@ -76,6 +76,30 @@ the monotone statement the theorem does support: both terms grow as q
 falls, so the released configuration loosens the stated bound at every
 fixed (d, k). External review 7 caught this.
 
+### 2.11 F3 direction framing (Rev. 5a.2, corrected same day)
+
+F3 presented the tree-reference direction (candidate 1.6x closer) as a
+property of the measured corpus. It is a property of the registered
+single-draw cell; the 100-draw mean ratio runs the other way (1.7x
+farther). The claim audit caught it. Corrected to state both, which
+sharpens the finding: the direction itself is draw-dependent.
+
+### 2.12 F5 control floors (Rev. 5a.2, corrected same day)
+
+F5 gave the untransformed matmul deviation as 3.95e-4 at fp16 and
+3.10e-3 at bf16. Neither matches any committed cell; the recorded mlp
+values are 3.91e-4 and 3.45e-3. The stale figures came from a superseded
+run and survived three revisions. Corrected to the recorded values with
+the shape named.
+
+### 2.13 F6 cancellation statistic (Rev. 5a.2, corrected same day)
+
+F6 said the residual stream's cancellation statistic is at most 0.016.
+The number matches no recorded statistic under any definition tried:
+the committed fixtures give a 99th-percentile row cancellation of at
+most 0.012 and a worst row of 0.16. Corrected to the recorded values and
+the wording softened from per-row to bulk-of-rows.
+
 ## 3. Tooling
 
 | Issue | Fix |
