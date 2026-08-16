@@ -412,3 +412,42 @@ separation before the envelope machinery. The eleven-falsified count
 leaves the contribution list; the run log keeps it. Central numbers
 untouched. Per the review, this closes the internal loop; next is the
 external expert read.
+
+## 2026-08-16 - Rev. 6: structure pass against venue conventions
+
+- Trigger: the compiled rev. 5a.4 reads too dense (author review). Six
+  comparable papers were profiled for structural norms before editing:
+  FPRev (ATC 25), TTrace, Mirage (OSDI 25), NNSmith (ASPLOS 23), FTTN,
+  and Mytkowicz (ASPLOS 09), measured from their full texts.
+- Norms found: abstracts run 132-215 words for five of six (FTTN's 307
+  is the outlier); measurement-genre abstracts carry roughly 4-10
+  measured numbers, systems abstracts 0-3. Results paragraphs average
+  2-5 sentences, with the measurement papers at 2-3; none of the six
+  uses finding boxes or bold-sentence leads; the working device is the
+  bold run-in heading. Headline results live in one float and are
+  restated once inline (0.7-1.2 floats per body page). No paper in the
+  set appendixes formal machinery (proofs are omitted instead), and only
+  one of six has a dedicated limitations section.
+- Changes (structure and pacing only; no measured value moved, and
+  tools/check_paper_numbers.py is untouched): abstract cut from ~280 to
+  ~200 words and from twelve quantitative tokens to four; Background
+  split one paragraph per system; the envelope formalism moved from
+  Method to a new Appendix B behind a five-sentence summary; F2 split
+  into four led sub-paragraphs (exact result; the pairing that
+  separates; the 64-point grid; the evading bug); F3's twelve inline
+  numbers moved to a full-width reference table; F4-F7 split into two
+  paragraphs each; Related work into three paragraphs.
+- Two deliberate deviations from the profiled norms, kept on purpose:
+  the full envelope construction stays in the paper (Appendix B) rather
+  than being omitted, because this project's verifiability standard
+  wants the exact analysis reproducible from the paper alone; and the
+  dedicated threats-to-validity section stays, because an unaffiliated
+  preprint substitutes disclosed limitations for venue review.
+- Wording constraints from ERRATA 2.8-2.13 were re-checked and
+  preserved: the exact-analysis claim stays count-free (sixteen frontier
+  instances), the backend attribution stays "Apple M3 (CPU)", F3 states
+  both the registered-draw and 100-draw directions, F5 floors carry the
+  mlp shape, F6 keeps the bulk-of-rows statistics.
+- Gate for this pass: recompile the tex and re-run
+  tools/check_paper_numbers.py on the M3; both must be green before
+  rev. 6 is called done.
