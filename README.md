@@ -2,7 +2,7 @@
 
 Verified superoptimizers prove kernel equivalence over exact arithmetic.
 The kernels they ship run in floating point.
-Random testing closes the distance, with no error bound.
+Random testing closes the distance between FP and exact arithmetic calculations that mega kernels produced via superoptimizers require, with no error bound.
 This repo measures that distance.
 
 The claim under test is [`CLAIM.md`](CLAIM.md).
