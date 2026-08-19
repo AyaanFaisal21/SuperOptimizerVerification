@@ -13,11 +13,12 @@ specifies the reference, draw protocol, and precision scope together. We
 measure what the unstated coordinates cost, on six rewrites that are
 exact identities over the reals and eighteen injected bugs. The rule's
 verdict moves with every coordinate we vary. In float32 PyTorch on an
-Apple M3 (CPU), the valid tiled matmul is rejected on 48/100 draws at
-K=4096 and 100/100 at K=11008, the contraction widths of Llama-2-7B, and
-the onset moves fourfold with input scale. An exact envelope analysis
-shows that no (atol, rtol) pair separates the rewrites from the bugs
-under either extreme cross-draw semantics, all-draws-must-pass or
+Apple M3 (CPU), with both operands drawn i.i.d. as a standalone kernel
+validator draws them, a valid tiled matmul is rejected on 48/100 draws
+at K=4096 and 100/100 at K=11008, the contraction widths of Llama-2-7B,
+and the onset moves fourfold with input scale. An exact envelope analysis
+shows that no (atol, rtol) pair separates the recorded corpus under
+either extreme cross-draw semantics, all-draws-must-pass or
 any-draw-may-pass, at any rtol >= 0; a real eps-placement bug evades
 every recorded draw at the published constant. At fp16 on one registered
 cell, the choice among three references flips the verdict and the
@@ -149,9 +150,11 @@ dropped contraction columns (j in {1,2,8,32}), Bessel-style divisors
 the variance (eps in 1e-5 to 1e-3). Two gross single-instance classes
 run in the detection arm only. The implemented column grid is sparser
 than registered; the deviation is recorded in the errata. Float64
-divergences span 4.1e-6 to 8.2e-1. That range overlaps the valid
-corpus's disagreement range, so the discrimination question is not
-degenerate.
+divergences span 4.1e-6 to 8.2e-1. The mildest instance produces a
+smaller absolute disagreement than the valid rewrites themselves do
+(4.1e-5 against 5.0e-4 at rtol = 0, Appendix B), so the discrimination
+question is not degenerate: a threshold loose enough to admit the valid
+corpus is already loose enough to admit that bug.
 
 **Instrument.** Oracle: the reference computed in float64 on the same
 rounded inputs the test-precision run sees, excluding input quantization.
@@ -181,9 +184,10 @@ committed log.
 
 ## 4. Findings
 
-**F1. Rejection of the valid tiled matmul reaches the contraction widths
-of deployed models.** In float32 PyTorch on the Apple M3 (CPU), under
-the literal elementwise rule at M=N=64 with 100 draws per cell:
+**F1. A validator that draws its own inputs rejects a valid tiled matmul
+at the contraction widths of deployed models.** In float32 PyTorch on
+the Apple M3 (CPU), under the literal elementwise rule at M=N=64 with
+100 draws per cell:
 
 | K | unit scale | sigma 2.67 |
 |---|---|---|
@@ -194,23 +198,48 @@ the literal elementwise rule at M=N=64 with 100 draws per cell:
 | 11008 | 100/100 [96-100%] | 100/100 [96-100%] |
 
 K=4096 and 11008 are the projection and MLP contraction widths of
-Llama-2-7B. The sigma column uses scale-matched gaussian inputs (sigma
-2.67, the measured activation scale); the onset falls roughly fourfold
-from its unit-scale position, to near K=1024. Rejection is
-non-decreasing along both axes.
+Llama-2-7B. The sigma column draws both operands at the measured
+activation scale (sigma 2.67); the onset falls roughly fourfold from its
+unit-scale position, to near K=1024. Rejection is non-decreasing along
+both axes.
+
+One scoping point governs how far this transfers. We draw both operands
+i.i.d. from the same distribution, which is what a standalone kernel
+validator does: Axon generates random FP32 inputs for every kernel
+argument, having no way to know that one of them would hold trained
+weights. A deployed projection or MLP matmul instead pairs an activation
+with a weight matrix whose entries are far smaller. The disagreement
+this rule measures grows with the product of the two operand scales, so
+that pairing pushes the onset to much larger K than the widths in the
+table; the sigma sweep below, where scale alone moves rejection from 0
+to 74 per 100 at fixed K, is the same effect on one axis. The finding is
+therefore about the inputs a validator generates, not a claim that a
+deployed Llama-2-7B matmul would be rejected. We did not measure
+asymmetric operand scales, and that is the measurement this finding most
+needs.
+
+The rejected side is the more accurate one. At fp32 the tiled variant is
+2.0x to 6.0x closer to the float64 oracle than the full-K reference it
+is compared against (total/floor 0.50, 0.17, 0.26 at the small, mlp, and
+attention shapes), so the differential the rule tests is dominated by
+the reference's own error. The reference here is a single library GEMM,
+whose internal accumulation order we do not control or characterize;
+F3 shows that reference choice alone can flip a verdict.
 
 The mechanism is backend-agnostic in formulation: near-zero output
 elements lose the relative allowance, accumulated rounding disagreement
 grows with reduction length, and the any-element aggregation turns rare
-element violations into tensor rejection. In diagnosed failing draws the
-violation is one element in 4096, its magnitude 750x below the tensor
-median. Tensor-scale relative disagreement (maximum absolute difference
-over maximum oracle magnitude) stays near 1e-6 throughout, so the
-tensor-scale statistic we report does not track the verdict. From the
-measured per-element exceedance of 3.42e-05 at K=512, a simple
-independence approximation over the rule's any-element quantifier gives
-13.1%, consistent with the observed [9-22%]. We do not establish whether
-output elements are independent.
+element violations into tensor rejection. In one diagnosed failing draw
+(exploratory) the violation was a single element in 4096, its magnitude
+750x below the tensor median. Tensor-scale relative disagreement
+(maximum absolute difference over maximum oracle magnitude) stays near
+1e-6 across these cells, so the tensor-scale statistic we report does
+not track the verdict. Every failing draw at K=512 carried exactly one
+violating element, so the independence approximation over the rule's
+any-element quantifier reduces to the observed count and corroborates
+nothing by itself; what it does show is the absence of clustering, since
+clustered violations would have produced multi-element failures and a
+lower tensor rate.
 
 Two same-kernel observations tie the onset to this mechanism rather than
 to a kernel change. At fixed K=512, input scale alone drives rejection
@@ -243,9 +272,11 @@ three results to the whole domain rtol >= 0.
 information bound, not an operational validator. It judges each valid
 program on its most favorable recorded draw and each mutant on its least
 favorable one, an assignment that requires knowing the class in advance.
-Under it, separators exist on a contiguous band rtol in [7.8e-03, 7.9]
-with maximum margin +9.5e-06 (for example, atol = 1e-06 at rtol =
-0.056). This falsified our registered prediction that all four pairings
+Under it, 110 consecutive sampled rtol values separate, spanning
+[7.8e-03, 7.9], with maximum margin +9.5e-06 (for example, atol = 1e-06
+at rtol = 0.056). Our interval certificate is one-sided: it certifies
+non-separation, so the interior of that band is sampled rather than
+certified. This falsified our registered prediction that all four pairings
 would fail to separate, and it makes F4 concrete: which draws a program
 is judged on can decide separability outright. The choice of per-class
 semantics, which no source paper states, swings the margin from
@@ -260,10 +291,14 @@ analytical choice, and the artifact reports the two components
 separately. Its minimum on the grid is a three-point plateau: (1e-4,
 1e-4), (1e-4, 1e-3), and (1e-4, 1e-2). Each plateau point reads 0% valid
 rejection (unit scale) plus a 6.25% mutant-instance miss fraction, which
-is 1 of the 16 frontier instances, equivalently 50 of 800 mutant draws,
-all from the eps-1e-5 bug. This fraction describes the constructed
+is 1 of the 16 frontier instances, equivalently 50 of 800 mutant draws.
+The missed instance is the eps-1e-5 bug, which is also the binding
+instance in the exact analysis. This fraction describes the constructed
 corpus, not any candidate population. Axon's published constant lies on
-that plateau. The binding coordinate is atol.
+that plateau, and it clears the valid corpus narrowly: at the grid rtol
+nearest 1e-4 the valid side requires atol = 9.4e-5 against the published
+1e-4, so the 0% rejection figure is one draw from moving. The binding coordinate is
+atol.
 
 *The evading bug.* The eps bug's severity is input-dependent (it grows
 as row variance approaches eps), so detection statements hold at the
@@ -306,9 +341,14 @@ to the oracle than its reference.
 
 **F4. Detection is a per-draw rate, and the source papers do not fully
 specify the draw count or how draws are aggregated.** Observed: the valid K=512
-tiling trips the rule on 14/100 draws [9-22%] under scale-matched
-gaussian inputs (sigma 2.67) and 0/100 at unit scale (upper bound 4%);
-an independent registered replication reads 16/100 [10-24%]. Our own
+tiling trips the rule on 14/100 draws [9-22%] under gaussian inputs at
+the measured activation scale (sigma 2.67) and 0/100 at unit scale
+(upper bound 4%). Two further registered runs of the same cell, differing
+only in seed stream and in whether the draws are clamped to the observed
+activation range, read 11/100 [6-19%] (the F1 table) and 16/100
+[10-24%]. The spread across those three runs is itself the point: a
+single 100-draw estimate of this rate carries a several-point interval.
+Our own
 exploratory single-draw sweep missed the failure; the registered
 repeated-draw run caught it.
 
@@ -343,9 +383,15 @@ happen if an FP32-class threshold were transferred, not what any
 system's actual criterion does.
 
 **F6. Real activations are benign in this model.** Observed: every
-real-activation FP32 cell passes with at least 10x headroom, including
-post-LayerNorm row sums at condition number 368,927, 400x beyond
-unit-gaussian reach (condition rose 400x, error rose 11x). The
+real-activation FP32 cell passes, including post-LayerNorm row sums at
+condition number 368,927, 400x beyond unit-gaussian reach (condition
+rose 400x, error rose 11x). We do not quantify the margin. The
+tensor-scale statistic suggests a wide one, but F1 shows that statistic
+does not track this rule: in two of these cells individual elements
+reach relative disagreements of 1.4e-1 and 2.4e-1 and pass only because
+`atol` carries them, so the elementwise margin at the binding element
+may be near 1. Our records do not store a per-cell gate margin, so the
+claim here is the verdict, not a distance from it. The
 fused-variance hazard does not materialize because the captured residual
 stream is near zero-mean in the bulk of its rows. Per-row cancellation,
 measured as |mean| over mean|x|, reaches at most 0.012 at the 99th
@@ -388,7 +434,29 @@ statements at the stated input statistics.
 
 **Reference coverage (F3).** Three references demonstrate the effect on
 one backend; production references may use blocked or multiway
-accumulation orders that differ from the three measured here.
+accumulation orders that differ from the three measured here. The
+verdict flip is carried by the sequential reference: the two
+library-plausible references agree with each other, passing the
+candidate on 98/100 and 99/100 draws, and both read "farther" in the
+100-draw mean. Admitting a 1024-term sequential fp16 sum as a reference
+is what produces the flip, and whether a real system would use one is
+not established. F3 is also measured only at fp16 and bf16, where F5
+shows a 1e-4-class constant does not apply; at fp32 the three references
+very likely agree.
+
+**Corpus composition (F2).** The envelopes are extreme order statistics
+over unequal populations: per draw the valid programs contribute about
+3.7M output elements and the mutants about 0.4M, and the classes are not
+evaluated at each other's shapes. Both monotonicities run the same way,
+since adding mutant instances only lowers the mutant-side envelope and
+adding valid draws or larger tensors only raises the valid-side one, so
+a wider corpus can only make non-separation easier to obtain. The
+binding mutant throughout is the mildest instance of a family we
+designed as a severity continuum; a milder floor would push the gap
+further negative and a coarser one might separate. The non-separation is
+also cross-operator, pooling a 3072-wide matmul tiling with a 1024-wide
+LayerNorm bug, and we do not report per-operator separability, which is
+the form of the fix Section 6 recommends.
 
 **One model, one batch (F6).** A pretrained-transformer activation
 corpus across layers and batches is the single most valuable missing
@@ -491,9 +559,11 @@ implementation (F3), draw count (F4), precision (F5), and input scale and
 distribution (F1, F6, F7). On the recorded corpus, no nonnegative mixed
 absolute-relative tolerance separates real-equivalent rewrites from
 injected bugs under the two extreme cross-draw semantics analyzed, at any
-rtol >= 0. Only a class-conditioned draw assignment would separate it,
-and no uniform rule realizes one. No evidence indicates that any system
-has shipped an incorrect kernel.
+rtol >= 0. Among the semantics we analyzed, only a class-conditioned
+draw assignment separates it, and that assignment requires knowing the
+class in advance; intermediate k-of-n rules are uniform and remain
+unanalyzed. No evidence indicates that any system has shipped an
+incorrect kernel.
 
 We propose a reporting standard. A floating-point acceptance result
 should specify at least:
@@ -654,8 +724,10 @@ closing the domain rtol >= 0.
 All measurements reproduce from this repository; each experiment runs
 from one script, raw per-cell records and the activation fixtures are
 committed, and the pre-registration, amendments, run log, and errata are
-public. One script, tools/check_paper_numbers.py, asserts every number
-in this paper against the committed records. AI tools (Claude) assisted
+public. One script, tools/check_paper_numbers.py, checks the paper's
+numbers against those records; it resolves a handful of them against
+quoted lines of the committed run log rather than against a data file,
+and labels which. AI tools (Claude) assisted
 with code, measurements, and documentation; the developer directed,
 reviewed, and verified all work, and no measured number comes from a
 model.

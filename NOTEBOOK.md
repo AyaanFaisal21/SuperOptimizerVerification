@@ -487,3 +487,54 @@ external expert read.
   and the paper cites that path.
 - Residual gap, stated in the paper and the errata: two recorded talks
   were not transcribed. A threshold named aloud would not be seen.
+
+## 2026-08-19 - Review 9: hostile methodological and prose reviews
+
+- Two independent adversarial reads before external distribution. One was
+  told to find the flaw that sinks the paper; one to find every place the
+  prose reads as machine-generated. Neither was asked to confirm anything.
+- Methodological verdict: no fatal flaw. The envelope algebra is correct
+  and independently re-derived, the gate predicate is the literal rule,
+  the six pairs are genuine identities, and every number recomputed from
+  the records matches. Five findings needed correction, all recorded in
+  ERRATA 2.14 to 2.18.
+- The one that matters most (ERRATA 2.16): F1 named K=4096 and K=11008 as
+  Llama-2-7B widths while drawing both operands i.i.d. at one scale. A
+  deployed matmul at those widths pairs an activation with a much smaller
+  weight matrix, and the disagreement grows with the product of the
+  operand scales, so the onset there would sit far beyond the table. The
+  finding is about a validator's own generated inputs, which is what Axon
+  produces, and it now says so. Asymmetric operand scales are the missing
+  measurement and are named as such in the text.
+- Second (ERRATA 2.15): F6's "10x headroom" was computed from the
+  tensor-scale statistic that F1 says does not track this rule. Elements
+  inside those passing cells sit at 1.4e-1 and 2.4e-1 relative
+  disagreement and pass on atol alone. The verdict stands; the margin
+  claim is withdrawn pending a gate-margin instrument.
+- Third: the conclusion asserted that no uniform rule separates the
+  corpus while F2 states that k-of-n rules are uniform and unanalyzed.
+  Corrected to match the body.
+- Fourth (ERRATA 2.14): D1's third registered clause was falsified by our
+  own record and logged as held. No paper claim moves; the audit trail
+  was wrong in the one place the audit trail is a contribution.
+- Fifth (ERRATA 2.18): the prose pass earlier the same day reintroduced
+  ERRATA 2.8's corpus-count error in the abstract. Caught within the hour.
+- Also added, all against our own interest: F1 now states that the
+  rejected variant is 2.0x to 6.0x closer to the oracle than the
+  reference it fails against, so the differential is dominated by the
+  reference's error; F2 notes the published constant clears the valid
+  corpus by 6%, one draw from moving; F4 reconciles the three readings of
+  the same cell (11, 14, 16 per 100) instead of quoting two of them in
+  different sections; the E3 independence check is described as the
+  no-clustering evidence it is rather than as corroboration; and Threats
+  gains a corpus-composition paragraph and the fact that F3's flip is
+  carried by the sequential reference alone.
+- Prose pass, same day, separately: cut the evidence-class apparatus,
+  removed three of four statements of the coordinate list, unpacked the
+  long sentences. Negation-antithesis constructions 24 to 11, sentences
+  over 38 words 36 to 15, body 4351 to about 4200 words. The paper is
+  shorter than every comparable venue paper profiled, so the density was
+  compression, not length.
+- Queued and not done: asymmetric operand scales (F1), a per-cell gate
+  margin (F6), the k-of-n sweep (F2), per-operator separability (F2), and
+  dumping per-program envelopes from the frontier run.

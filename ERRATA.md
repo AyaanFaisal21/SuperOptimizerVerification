@@ -100,6 +100,82 @@ the committed fixtures give a 99th-percentile row cancellation of at
 most 0.012 and a worst row of 0.16. Corrected to the recorded values and
 the wording softened from per-row to bulk-of-rows.
 
+### 2.14 D1 recorded as held when one clause was falsified (Rev. 6, corrected 2026-08-19)
+
+D1 was registered with three clauses: the median max-diff grows broadly
+and monotonically with K; no isolated jump at one width; and "argmax
+elements sit well below the tensor median magnitude." The first two held.
+The third is false in our own record: `results/k_differential.json` gives
+median argmax reference magnitudes of 44.3, 84.5, 110.2, 145.8, 255.1
+against median tensor medians of 15.4, 21.6, 30.5, 43.4, 70.1, so the
+argmax sits 2.9x to 3.9x *above* the median at every K. The run log records "D1 outcome: prediction held"
+and then describes the correct, opposite direction in the same sentence.
+
+No number moves and no paper claim changes: the paper always stated the
+measured direction, and `tools/check_paper_numbers.py` asserts it. What
+was wrong is the audit trail, in the one place the paper offers the audit
+trail as a contribution. A prediction that was partly falsified is now
+recorded as partly falsified.
+
+### 2.15 F6's "10x headroom" was measured in the wrong metric (Rev. 6, corrected 2026-08-19)
+
+F6 stated that every real-activation FP32 cell "passes with at least 10x
+headroom." The headroom was computed as `1e-4 / differential.scale_rel`,
+a tensor-scale statistic. F1 states in the same paper that this statistic
+does not track the verdict of an elementwise rule.
+
+The committed records show the gap directly: the fp32 activation cells
+imply 63x to 275x headroom by that statistic, while individual elements
+in two of them reach relative disagreements of 1.37e-1 and 2.35e-1 and
+pass only because `atol` carries them. From a passing verdict alone, the
+margin at the binding element can be bounded no better than about 1x.
+This is ERRATA 5, finding 2 recurring: a ratio quoted against the wrong
+denominator, in the one finding that points toward reassurance. F6 now
+states the verdict and declines to quantify the margin. The instrument
+records no per-cell gate margin; adding one is queued.
+
+### 2.16 F1's deployment framing outran the measurement (Rev. 6, corrected 2026-08-19)
+
+F1 reported rejection at K=4096 and K=11008 and named them "the
+projection and MLP contraction widths of Llama-2-7B." Both operands in
+those runs are drawn i.i.d. from one distribution. A deployed projection
+or MLP matmul pairs an activation with a trained weight matrix, whose
+entries are far smaller, and the disagreement this rule measures grows
+with the product of the two operand scales. So the measured onset is a
+property of a validator's own random inputs, which is what Axon
+generates, and not evidence that a deployed matmul at those widths would
+be rejected.
+
+The finding survives in the form the measurement supports and is now
+stated that way. The missing measurement, asymmetric operand scales, is
+queued and named in the text as the one this finding most needs.
+
+### 2.17 Non-degeneracy was argued across incommensurable metrics (Rev. 6, corrected 2026-08-19)
+
+Method said the mutant divergence range "overlaps the valid corpus's
+disagreement range." The mutant figures are scale-relative float64
+divergences (4.1e-6 to 8.2e-1); the valid corpus's fp32 scale-relative
+differentials span 2.6e-7 to 1.6e-6. Those ranges do not overlap. The
+real basis for non-degeneracy is the quantity the rule actually tests:
+in per-element absolute slack at rtol = 0, the mildest bug requires
+4.1e-5 while the valid corpus requires 5.0e-4, so any threshold admitting
+the valid corpus already admits that bug. Corrected to that statement,
+which is stronger.
+
+### 2.18 Abstract regression, caught the same day (Rev. 6, corrected 2026-08-19)
+
+The prose pass rewrote the abstract's separability sentence to "no (atol,
+rtol) pair separates the rewrites from the bugs," whose definite articles
+point back to "six rewrites and eighteen injected bugs" in the preceding
+sentence. The separability corpus is seven program cells and sixteen
+mutant instances. This is ERRATA 2.8 verbatim, reintroduced by an edit
+made for readability and caught by review within the hour. Restored to
+"the recorded corpus."
+
+Lesson, recorded because it recurred: an edit that shortens a sentence can
+silently re-scope it. Any rewrite touching a corpus-count sentence gets
+checked against ERRATA 2.8.
+
 ## 3. Tooling
 
 | Issue | Fix |
