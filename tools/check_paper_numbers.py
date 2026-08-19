@@ -39,6 +39,7 @@ def pct(k, n):
 
 # ---------------- F1 table and mechanism ----------------
 e = R("k_extension.json"); sg = R("scale_grid.json"); gf = R("grid_fill.json")
+sw = R("sweep_randn.json")
 ka, sa = sg["k_axis"], sg["sigma_axis"]
 check("F1 unit 512=0", sa["1"]["fails"] == 0)
 check("F1 unit 1024=0", gf["unit_K1024"]["fails"] == 0)
@@ -152,7 +153,6 @@ check("Method mutant divergences span 4.1e-6 to 8.2e-1",
       and abs(max(v["f64_divergence"] for v in md.values()) - 0.82) < 0.02)
 
 # ---------------- F3 ----------------
-sw = R("sweep_randn.json")
 smx = {r["precision"]: r for r in sw
        if r["transformation"] == "softmax_online" and r["shape_class"] == "mlp"}
 fl16 = smx["fp16"]["floor"]["scale_rel"]; to16 = smx["fp16"]["total"]["scale_rel"]
