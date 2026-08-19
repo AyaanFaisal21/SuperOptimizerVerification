@@ -76,10 +76,10 @@ Each tool's docstring holds its run command.
 
 ## Status
 
-Phases 0-5 of 6 are complete. The writeup is in revision after three reviews.
+Phases 0-5 of 6 are complete. The writeup is at rev. 6 after eight review passes.
 Committed sweep records are from the Apple M3 Pro (CPU).
 The A10 (Ampere) re-verified corpus equivalence and characterised the precision flags.
-The open measurement queue is [`measure.md`](measure.md).
+The measurement queue is complete; [`NOTEBOOK.md`](NOTEBOOK.md) holds the run record.
 
 ```bash
 python -m pytest tests/ -q                # phase 1 exit criteria
