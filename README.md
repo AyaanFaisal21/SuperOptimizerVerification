@@ -1,57 +1,95 @@
 # The floating-point gap in verified tensor superoptimizers
 
-Verified superoptimizers prove kernel equivalence over exact arithmetic.
-The kernels they ship run in floating point.
-Random testing closes the distance between FP and exact arithmetic calculations that mega kernels produced via superoptimizers require, with no error bound.
-This repo measures that distance.
+Mirage, Prism, and Axon prove kernel equivalence over exact or idealized
+arithmetic, then accept the compiled kernel with an empirical
+floating-point check: compare against a reference implementation on
+random inputs, elementwise, within `|g_i - b_i| <= atol + rtol*|b_i|`.
+Only Axon states its constants. No system states the reference, draw
+protocol, and precision scope together.
 
-The claim under test is [`CLAIM.md`](CLAIM.md).
-It was registered 2026-08-03, with thresholds fixed before any measurement code.
+This repo measures what that check accepts and rejects.
 
-## AI use
+**The paper:** [`PAPER.md`](PAPER.md) (readable) · [`paper.tex`](paper.tex)
+(Overleaf-ready single file)
 
-AI tools (Claude) assisted with code, measurements, and documentation. The
-developer directed, reviewed, and verified all work. No measured number comes
-from a model: every result comes from the instruments in `fpgap/` and `tools/`,
-gated by pre-registered thresholds ([`CLAIM.md`](CLAIM.md)), a float64 reference
-validated against 50-digit arithmetic, a negative control, and raw per-cell
-records committed in [`results/`](results/).
+## What it finds
+
+**A validator that draws its own inputs rejects a valid rewrite at
+deployed widths.** A K-tiled matmul that is an exact identity over the
+reals is rejected on 48/100 draws at K=4096 and 100/100 at K=11008, the
+contraction widths of Llama-2-7B, under the published constant. The
+rejected side is the more accurate one: at fp32 the tiled variant is 2.0x
+to 6.0x closer to a float64 oracle than the reference it fails against.
+Both operands are drawn i.i.d., which is what a standalone kernel
+validator does and is not a claim about a deployed matmul.
+
+**No fixed tolerance separates the corpus.** On the recorded corpus
+(seven valid program cells, sixteen injected-bug instances), no
+nonnegative `(atol, rtol)` pair separates the two classes under either
+extreme cross-draw rule, at any `rtol >= 0`. This is exact rather than a grid sweep: per-draw envelopes,
+interval certificates, and a monotonicity argument closing the tail
+(Appendix B).
+
+**Reference choice flips the verdict.** The same online-softmax candidate
+at fp16 passes against two references and fails against a third, and the
+direction of the accuracy comparison is itself draw-dependent.
+
+**Real activations are benign.** Every real-activation FP32 cell passes.
+We do not quantify the margin: the tensor-scale statistic that would
+suggest a wide one is the statistic this paper shows does not track an
+elementwise rule.
+
+These results do not demonstrate failures in the measured systems. They
+identify the protocol coordinates that must be stated for a numerical
+acceptance result to be reproducible.
+
+## Checking the numbers
+
+Every number in the paper is asserted against the committed records by
+one script. Six of them resolve to quoted lines of the run log rather
+than to a data file, and the script labels which.
+
+```bash
+python tools/check_paper_numbers.py    # 109 claims against results/
+python -m pytest -q                    # corpus exit criteria, envelope tests
+```
 
 ## Reading order
 
 | File | What it is |
 |---|---|
-| [`CLAIM.md`](CLAIM.md) | The registered claim, thresholds, and dated verdict. Frozen: kept verbose by design |
-| [`BACKGROUND.md`](BACKGROUND.md) | Why the gap exists, per system, with citations |
-| [`ROADMAP.md`](ROADMAP.md) | The original plan and kill criteria. Frozen: the plan the work is measured against |
-| [`PROGRESS.md`](PROGRESS.md) | Phase status against the roadmap's own exit criteria |
+| [`PAPER.md`](PAPER.md) | The paper |
+| [`CLAIM.md`](CLAIM.md) | The registered claim and dated amendments. Frozen; verbose by design |
+| [`BACKGROUND.md`](BACKGROUND.md) | Why the gap exists, per system, with the corpus provenance table |
 | [`NOTEBOOK.md`](NOTEBOOK.md) | Dated run record. Prediction before each run, outcome after |
-| [`ERRATA.md`](ERRATA.md) | Every error, retraction, and falsified claim, by failure mode |
-| [`AUDIT.md`](AUDIT.md) | Method audit of 2026-08-04: nine findings, remaining steps |
-| [`papers/README.md`](papers/README.md) | The six-paper working set |
+| [`ERRATA.md`](ERRATA.md) | Every error, retraction, and falsified prediction, by failure mode |
+| [`audits/mirage-fp-filter.md`](audits/mirage-fp-filter.md) | Method and evidence for the paper's Appendix A |
+| [`ROADMAP.md`](ROADMAP.md) · [`PROGRESS.md`](PROGRESS.md) · [`AUDIT.md`](AUDIT.md) | Historical: the original plan, phase status, and the 2026-08-04 method audit |
 
 ## The corpus
 
-Six transformation pairs. Each pair is exactly equal over the reals.
-Any measured difference is floating-point behavior alone.
+Six transformation pairs, each exactly equal over the reals, so any
+measured difference is floating-point behavior alone. Provenance per pair
+is in [`fpgap/corpus.py`](fpgap/corpus.py) and tabulated in
+[`BACKGROUND.md`](BACKGROUND.md).
 
-| Pair | Identity | Accepted by | Source |
-|---|---|---|---|
-| `split_reduction` | `sum(x) == sum of chunk sums` | Prism, Mirage, MPK | Prism Table 1 |
-| `reassociation` | `(a+b)+c == a+(b+c)` | Prism, Mirage, Axon | Prism §4; Mirage §5 |
-| `scalar_past_matmul` | `(aA)B == a(AB)` | Axon, Prism | Axon §2/§5.1 example |
-| `layernorm_variance` | `E[(x-u)^2] == E[x^2] - u^2` | Axon (in principle) | cornfield ln_kernel |
-| `softmax_online` | naive == online softmax | Prism (chunked form); Axon, Mirage: no (inferred) | TransformerOp attn_ext.cu |
-| `matmul_k_tiling` | full-K == tiled-K matmul | Prism, Axon, Mirage | Prism §3.4/§5 |
+| Pair | Identity | Accepted by |
+|---|---|---|
+| `split_reduction` | `sum(x) == sum of chunk sums` | Prism, Mirage, MPK |
+| `reassociation` | `(a+b)+c == a+(b+c)` | Prism, Mirage, Axon |
+| `scalar_past_matmul` | `(aA)B == a(AB)` | Axon, Prism |
+| `layernorm_variance` | `E[(x-u)^2] == E[x^2] - u^2` | Axon (in principle) |
+| `softmax_online` | naive == online softmax | Prism (chunked form only) |
+| `matmul_k_tiling` | full-K == tiled-K matmul | Prism, Axon, Mirage |
 
-`softmax_online` is the one pair the three systems do not all accept.
-Prism verifies the chunked form, without the running max (its Fig. 2).
-The running max is not a Lax operator, so we infer Mirage partitions around this pair.
-Axon leaves `exp` uninterpreted, so we infer it rejects the rescale identity.
-Both inferences are ours. Neither paper classifies this transformation.
+`softmax_online` is the one pair the three systems do not all accept, and
+it is in the corpus for that reason. Prism verifies the chunked form
+without the running max. Neither Mirage nor Axon classifies the rescale
+form; our inferences about why are labeled as inferences in the paper.
 
-Summation order is pinned in [`fpgap/accumulate.py`](fpgap/accumulate.py), never `torch.sum`.
-Torch's own reduction order differs by backend and would contaminate the measurement.
+Summation order is pinned in
+[`fpgap/accumulate.py`](fpgap/accumulate.py), never `torch.sum`, whose
+reduction order varies by backend and would contaminate the measurement.
 
 ## Code layout
 
@@ -59,76 +97,31 @@ Each tool's docstring holds its run command.
 
 | Path | Role |
 |---|---|
-| `fpgap/accumulate.py` | Order-pinned summation primitives |
-| `fpgap/corpus.py` | The six pairs, with provenance and hazard notes |
-| `fpgap/harness.py` | One cell: floor, total, differential, both gate readings |
-| `fpgap/seeds.py` | Phase 5 input generators |
-| `tools/probe_hardware.py` | Machine arithmetic characterisation |
-| `tools/check_corpus_device.py` | Float64 equivalence gate, per device |
-| `tools/validate_reference.py` | Float64 truth check against 50-digit mpmath |
-| `tools/dump_activations.py` | Regenerates the activation fixture from a checkpoint |
-| `tools/run_sweep.py` | Phase 4 synthetic arm, 54 cells |
-| `tools/run_sweep_activations.py` | Phase 4 activation arm plus matched controls |
-| `tools/run_seeded.py` | Phase 5 catch rates, 100 trials per cell |
-| `tests/test_corpus.py` | Phase 1 exit criteria plus the negative control |
-| `results/` | Raw per-cell records. The tables derive from these |
+| `fpgap/` | Order-pinned summation, the six pairs, the per-cell harness, input generators |
+| `tools/run_*.py` | One script per registered experiment; each prints its prediction before running |
+| `tools/verify_separability.py` | Independent reimplementation of the envelope analysis |
+| `tools/check_paper_numbers.py` | Asserts the paper's numbers against `results/` |
+| `results/` | Raw per-cell records. Every table derives from these |
 | `fixtures/` | Real activation tensors and their statistics |
 
-## Status
+## Corrections
 
-Phases 0-5 of 6 are complete. The writeup is at rev. 6 after eight review passes.
-Committed sweep records are from the Apple M3 Pro (CPU).
-The A10 (Ampere) re-verified corpus equivalence and characterised the precision flags.
-The measurement queue is complete; [`NOTEBOOK.md`](NOTEBOOK.md) holds the run record.
+Claims retracted during this work are recorded, not removed: a "100x
+tolerance gap" built on a category error, a direction-blind metric
+interpretation refuted by our own records, a Mirage misreading from a
+stale paper version, a K=2048 verdict produced by comparing a maximum
+absolute difference against `atol` alone, and a withdrawn margin claim.
+Details and causes: [`ERRATA.md`](ERRATA.md).
 
-```bash
-python -m pytest tests/ -q                # phase 1 exit criteria
-python tools/validate_reference.py        # float64 vs 50-digit truth
-python tools/run_sweep.py                 # 54-cell synthetic sweep
-python tools/run_sweep_activations.py     # real activations + controls
-python tools/run_seeded.py                # phase 5 catch rates
-python tools/run_mutants.py               # detection arm, six mutants
-python tools/run_frontier.py              # 64-point tolerance grid
-python tools/run_k_extension.py           # E2-E4: K sweep, decomposition, references
-```
+## AI use
 
-## Result
-
-Neither C1 nor A1. The dated verdict is in [`CLAIM.md`](CLAIM.md), with its 2026-08-14 amendment.
-
-The gate under test: pass if `|new - old| <= atol + rtol*|old|`, with `atol = rtol = 1e-4`.
-
-**Main finding: the verdict depends on output shape and scale, not on correctness.**
-The same valid tiled matmul, unchanged, under the literal rule (M=N=64, unit scale, 100 draws per K):
-
-| K | rejected | 95% CI |
-|---|---|---|
-| 2048 | 0/100 | [0%, 4%] |
-| 4096 | 48/100 | [38%, 58%] |
-| 11008 | 100/100 | [96%, 100%] |
-
-K = 4096 and 11008 are the projection and MLP contraction widths of Llama-2-7B.
-The failing elements sit near zero, where only `atol` protects them.
-Accumulated error grows with the reduction length; the element's own magnitude does not.
-At the measured activation scale (sigma 2.7) the onset moves left: K = 512 already fails on 14% of draws.
-Relative errors across all six pairs span a factor of 3.
-Absolute errors span four orders of magnitude, because output magnitudes do.
-The fix costs nothing: a relative-only gate, or an `atol` scaled to the output.
-An earlier table here reported failure at K = 2048. Its predicate was wrong. Retraction #4, [`ERRATA.md`](ERRATA.md).
-
-Supporting results:
-
-- A failure on 14% of draws [CI 9-22%] at activation input scale (0/100 at unit scale) is missed 86% of the time by the single-draw validation this project itself ran in Phase 4.
-- The verdict tracks the reference implementation, not accuracy. Against a sequential reference, online softmax at fp16 is 15x closer to float64 truth than the reference, and fails. Against a `torch.sum` reference it is 1.6x farther, and passes.
-- The tolerance grid has no separating point. No (atol, rtol) pair rejects zero valid rewrites and misses zero bugs. The published constant sits on the optimum plateau and still passes a real eps-placement bug on every draw.
-- Real activations are benign. Every real site passes with 10x headroom, including post-LayerNorm summation at row condition number 368,927.
-- At fp16 and bf16 the failures measure precision, not transformations: `d/floor` is near 1 for two-thirds of the corpus.
-
-Claims retracted during the work are recorded, not removed:
-a "100x tolerance gap" built on a category error; "C1 survives at fp32,"
-whose seeded inputs sit 10.4 sigma outside the real distribution; a Mirage
-misreading from a stale paper version; and the K = 2048 verdict above.
-Details: [`ERRATA.md`](ERRATA.md).
+AI tools (Claude) assisted with code, measurements, and documentation.
+The developer directed, reviewed, and verified all work. No measured
+number comes from a model: every result comes from the instruments in
+`fpgap/` and `tools/`, gated by pre-registered thresholds
+([`CLAIM.md`](CLAIM.md)), a float64 reference validated against 50-digit
+arithmetic, a negative control, and the raw per-cell records in
+[`results/`](results/).
 
 ## License
 

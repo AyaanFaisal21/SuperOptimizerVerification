@@ -463,3 +463,17 @@ spot-check of the F3 headline cell, 3 draws, three references. V1:
 independent no-Pareto recomputation of the E5/E8 envelopes plus
 synthetic known-answer tests. No threshold moves; no new claims are
 registered; these check existing ones.
+
+### 2026-08-19 (sixth amendment) - the actionable-consequence line is superseded
+
+The frozen text above offers "a relative-only gate, or an `atol` scaled
+to output" as the actionable consequence. F2 supersedes it. A
+relative-only gate is the atol = 0 member of the same mixed
+absolute-relative family, and the exact envelope analysis shows no
+member of that family separates the recorded corpus under either extreme
+cross-draw semantics, at any rtol >= 0. Scaling atol to the output is a
+different rule shape and was never measured here.
+
+The frozen text is left as written, per this file's rule. What the study
+supports instead is the reporting standard in the paper's conclusion:
+state the coordinates, rather than adopt a constant.

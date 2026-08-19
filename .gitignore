@@ -22,3 +22,7 @@ results/**/*.npy
 
 # full verbose doc originals for future agents. local only.
 agent-notes/
+
+# editor and interpreter residue
+.Rhistory
+.Rproj.user/
