@@ -301,6 +301,44 @@ check("Threats valid side ~3.7M elements per draw",
 check("Threats mutant side ~0.4M elements per draw",
       mutant_elems == 409_984, f"{mutant_elems}")
 
+# ---------------- paper text ----------------
+# Everything above asserts record -> literal: the numbers this script
+# names still match the committed data. That direction cannot catch an
+# edit that changes a number in the paper and not here. This direction
+# asserts literal -> paper text, so the two can no longer drift apart
+# silently. Whitespace-normalized, because line wrapping is not content.
+PAPER = re.sub(r"\s+", " ", (ROOT / "PAPER.md").read_text())
+
+def present(name, s):
+    rows.append((f"paper text: {name}", "PASS" if s in PAPER else "FAIL",
+                 "" if s in PAPER else f"not in PAPER.md: {s!r}"))
+
+for _name, _s in [
+    ("F1 K=4096 rate", "48/100"), ("F1 K=11008 rate", "100/100"),
+    ("F1 sigma axis", "0, 0, 1, 16, 74"), ("F1 accuracy ratio", "2.0x"),
+    ("F1 median max|d| low", "6.1e-05"), ("F1 median max|d| high", "1.3e-03"),
+    ("F2 all-draws-must-pass gap", "-4.0e-06"),
+    ("F2 any-draw-may-pass gap", "-4.2e-06"),
+    ("F2 pessimal gap", "-3.5e-05"), ("F2 fourth-corner margin", "+9.5e-06"),
+    ("F2 separating band low end", "7.8e-03"), ("F2 miss fraction", "6.25%"),
+    ("F2 valid side near rtol 1e-4", "9.4e-5"),
+    ("Method mildest bug slack", "4.1e-5"),
+    ("Method valid corpus slack", "5.0e-4"),
+    ("F3 sequential floor", "8.9e-3"), ("F3 tree floor", "9.7e-4"),
+    ("F4 per-draw rate", "14/100"), ("F4 replication", "16/100"),
+    ("F4 third reading", "11/100"),
+    ("F5 fp16 control floor", "3.91e-4"),
+    ("F5 bf16 control floor", "3.45e-3"),
+    ("F6 per-element relative a", "1.4e-1"),
+    ("F6 per-element relative b", "2.4e-1"),
+    ("F6 cancellation p99", "0.012"), ("F6 worst row", "0.16"),
+    ("Threats valid elements/draw", "3.7M"),
+    ("Threats mutant elements/draw", "0.4M"),
+    ("Appendix A released FP_P", "167"), ("Appendix A released FP_Q", "83"),
+    ("Appendix B rtol samples", "401"),
+]:
+    present(_name, _s)
+
 # ---------------- report ----------------
 w = max(len(n) for n, _, _ in rows)
 fails = 0
