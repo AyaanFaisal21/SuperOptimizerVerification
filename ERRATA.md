@@ -116,6 +116,7 @@ the wording softened from per-row to bulk-of-rows.
 - `matmul_k_tiling` d/floor does not order by K. Needs a controlled K sweep with M and N pinned.
 - Softmax gate immunity is partly an atol artifact of small outputs. Caveat travels with the finding.
 - The seq-order baseline is not the field's tree-order reference. Reduction differentials may overstate. AUDIT step 3.
+- The Mirage absence claim is bounded by what text can show. Two recorded talks (OSDI '25; EGRAPHS, 2025-10-16) were not transcribed, commit history was scanned at seven refs rather than every commit, and non-public material is out of reach. A threshold stated aloud, or added and removed between snapshots, would not have been seen. Scope and method: [`audits/mirage-fp-filter.md`](audits/mirage-fp-filter.md).
 
 ## 5. Findings of the 2026-08-04 method audit
 

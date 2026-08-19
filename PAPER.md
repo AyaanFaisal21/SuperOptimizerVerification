@@ -592,20 +592,35 @@ Finds Kernel Bugs. arXiv:2606.27396.
 Exploratory; the checklist of Section 8 applied to a released artifact.
 Audited: mirage-project/mirage at commit 5c28cc6, the tip of the default
 mpk branch (2026-07-28), with the evaluation branch and the older main
-branch (ffe38df, 2026-04-17) cross-checked; method and positive controls
-in the repository audit notes. The released superoptimize path is
-search, exact finite-field fingerprint verification, transpilation, then
-performance-only selection over random inputs; we found no
-floating-point comparison in the audited acceptance path at these
-commits, which leaves the tolerance, precision, and input-distribution
-coordinates unexercised there, while the per-element rule (exact field
-equality), reference (input-graph fingerprints), draw count (a single
-fingerprint evaluation per candidate, consistent with the paper's
-acknowledged single test), and aggregation (all outputs must match) are
-determined by code. The numerical-stability filter described in the
-paper's v3 (section 5.2) is not locatable in the released search path at
-these commits; float tolerances appear only in demos and runtime-kernel
-tests. The finite-field constants are FP_P=167, FP_Q=83 on all three
+branch (ffe38df, 2026-04-17) cross-checked; method, search terms, and
+positive controls in audits/mirage-fp-filter.md. The released
+superoptimize path is search, exact finite-field fingerprint
+verification, transpilation, then performance-only selection over random
+inputs; we found no floating-point comparison in the audited acceptance
+path at these commits, which leaves the tolerance, precision, and
+input-distribution coordinates unexercised there, while the per-element
+rule (exact field equality), reference (input-graph fingerprints), draw
+count (a single fingerprint evaluation per candidate, consistent with
+the paper's acknowledged single test), and aggregation (all outputs must
+match) are determined by code. The numerical-stability filter described
+in the paper's v3 (section 5.2) is not locatable in the released search
+path at these commits.
+
+The closest thing to it is a CI test, `is_closed()` in
+tests/python/test_tensor_program.py, which compares hand-constructed
+graphs against torch references and counts an element mismatched only
+when relative and absolute error both exceed 1e-1. We record it because
+a reader will find it: it is not the filter, since it never calls
+`superoptimize()`, never reaches the verifier, and rejects no candidate,
+and its conjunctive criterion is looser than an `allclose` rule. Other
+tolerances (demo scripts, transpiler tests) sit equally far from the
+acceptance path. The audit also covered the published camera-ready
+(identical sentence, no appendix), the artifact-evaluation instructions
+that earned the Results Reproduced badge (performance and search time
+only, no numerical check), the group's later papers, the repository
+documentation, and the issue and discussion history; the protocol is
+stated in none of them. Two recorded talks were not transcribed, so a
+threshold named aloud would not have been seen. The finite-field constants are FP_P=167, FP_Q=83 on all three
 audited branches, while the paper states p=227, q=113. Theorem 2 of the
 paper bounds a single test's acceptance probability by
 8dk^4/q + q^(-1/k^2); both terms grow as q falls, so the released q

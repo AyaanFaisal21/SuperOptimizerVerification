@@ -451,3 +451,39 @@ external expert read.
 - Gate for this pass: recompile the tex and re-run
   tools/check_paper_numbers.py on the M3; both must be green before
   rev. 6 is called done.
+
+## 2026-08-19 - Adversarial test of the Mirage absence claim
+
+- Trigger: asked whether we know for certain that Mirage never specified
+  its post-compilation floating-point check. We did not. The claim rested
+  on the paper text and on one code audit whose method was in a
+  gitignored file, so a reader could not check it.
+- Prediction, written before the sweep: no stated protocol exists in any
+  authored channel, but the code audit is the weak link and something
+  tolerance-shaped will turn up in the test suite. Both held.
+- Method: the search was instructed to DISPROVE the claim, not to confirm
+  it. Channels: the USENIX camera-ready (full text, not a summary), the
+  CMU and NSF PAR deposits, artifact-evaluation instructions, MPK, the
+  ITCS 26 theory paper behind section 5, repository documentation, talks,
+  and GitHub code at seven refs plus issues, PRs, and all discussions.
+  Full record: audits/mirage-fp-filter.md.
+- Outcome: the claim survives. No threshold, reference, or draw count in
+  any channel searched. New supporting facts: the camera-ready carries no
+  appendix; the sentence is absent from both the v1 PDF and the NSF PAR
+  deposit, so it enters at the camera-ready; and the artifact evaluation
+  that earned Results Reproduced asks for performance and search time
+  only, with no numerical check.
+- The counter-evidence, now disclosed rather than missed: is_closed() in
+  tests/python/test_tensor_program.py pairs torch references with a 1e-1
+  threshold on uGraph outputs. It is not the filter (hand-built graphs,
+  never calls superoptimize, rejects nothing, conjunctive criterion).
+  Recorded in Appendix A because a reader will find it, and because
+  claiming it as Mirage's tolerance would repeat ERRATA 1.5 exactly.
+- Three load-bearing facts were re-fetched and read a second time from
+  source before entering the paper: is_closed, the fingerprint equality
+  in probabilistic_verifier.cc, and ae.md.
+- Fixed while here: Appendix A cited "the repository audit notes," which
+  were gitignored. The method is now tracked at audits/mirage-fp-filter.md
+  and the paper cites that path.
+- Residual gap, stated in the paper and the errata: two recorded talks
+  were not transcribed. A threshold named aloud would not be seen.
