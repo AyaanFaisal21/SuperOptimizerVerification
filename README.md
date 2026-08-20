@@ -10,7 +10,7 @@ protocol, and precision scope together.
 This repo measures what that check accepts and rejects.
 
 **The paper:** [`PAPER.md`](PAPER.md) (readable) · [`paper.tex`](paper.tex)
-(Overleaf-ready single file)
+(Overleaf-ready single file). As of 08/19, The Manuscript Draft has been added to the repository.
 
 ## What it finds
 
